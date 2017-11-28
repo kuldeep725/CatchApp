@@ -1,10 +1,14 @@
 package com.iam725.kunal.navigation;
 
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.annotation.RequiresApi;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.util.Log;
@@ -27,14 +31,26 @@ public class Login extends AppCompatActivity {
         private EditText passwordEditText;
         private String email;
         private String password;
+        ProgressDialog progressDialog;
         //private TextView mStatusTextView;
         //private TextView mDetailTextView;
 
+        @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN)
         @Override
         protected void onCreate(@Nullable Bundle savedInstanceState) {
                 super.onCreate(savedInstanceState);
                 setContentView(R.layout.user_login);
 
+//                Toolbar toolbar = new Toolbar(this);
+//                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+//                        toolbar.setBackground(new ColorDrawable(Color.parseColor("#08B34A")));
+//                }
+//                setSupportActionBar(toolbar);
+//                ActionBar bar = getActionBar();
+//                if (bar != null) {
+//                        bar.setBackgroundDrawable(new ColorDrawable(Color.parseColor("#08B34A")));
+//                }
+                progressDialog = new ProgressDialog(Login.this);
                 mAuth = FirebaseAuth.getInstance();
                 emailEditText = (EditText) findViewById(R.id.input_email);
                 passwordEditText = (EditText) findViewById(R.id.input_password);
@@ -105,10 +121,28 @@ public class Login extends AppCompatActivity {
 //                                                Ed.commit();
                                                 SharedPreferences prefs = Login.this.getSharedPreferences("contact", MODE_PRIVATE);
                                                 SharedPreferences.Editor prefsEditor = prefs.edit();
-                                                prefsEditor.putString("password", password);
+                                                prefsEditor.putString("email", email);
                                                 prefsEditor.apply();
 
-                                                i.putExtra("email", email);
+//                                                i.putExtra("email", email);
+                                                progressDialog.setTitle("Catch App");
+                                                progressDialog.setMessage("Logging In...");
+                                                progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+                                                progressDialog.show();
+                                                progressDialog.setCancelable(true);
+                                                new Thread(new Runnable() {
+                                                        public void run() {
+                                                                try {
+                                                                        Thread.sleep(5000);
+                                                                } catch (Exception e) {
+                                                                        e.printStackTrace();
+                                                                }
+                                                                if (progressDialog != null)
+                                                                        progressDialog.dismiss();
+                                                        }
+                                                }).start();
+//                                                ProgressDialogForLoggingIn dialog = new ProgressDialogForLoggingIn(Login.this);
+//                                                dialog.execute();
                                                 startActivity(i);
                                                 finish();
                                         } else {
@@ -149,6 +183,39 @@ public class Login extends AppCompatActivity {
                 }
 
                 return valid;
+        }
+        private class ProgressDialogForLoggingIn extends AsyncTask<Void, Void, Void> {
+                private ProgressDialog dialog;
+
+                ProgressDialogForLoggingIn(Login activity) {
+                        dialog = new ProgressDialog(activity);
+                }
+
+                @Override
+                protected void onPreExecute() {
+                        dialog.setMessage("Doing something, please wait.");
+                        dialog.show();
+                }
+
+                protected Void doInBackground(Void... args) {
+                        // do background work here
+                        return null;
+                }
+
+                protected void onPostExecute(Void result) {
+                        // do UI work here
+                        if (dialog.isShowing()) {
+                                dialog.dismiss();
+                        }
+                }
+        }
+        @Override
+        public void onDestroy() {
+                super.onDestroy();
+                if (progressDialog != null) {
+                        progressDialog.dismiss();
+                        progressDialog = null;
+                }
         }
 
 }

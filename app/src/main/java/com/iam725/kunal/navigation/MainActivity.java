@@ -1,6 +1,7 @@
 package com.iam725.kunal.navigation;
 
 import android.annotation.SuppressLint;
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -12,9 +13,7 @@ import android.location.LocationManager;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
-import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
@@ -89,6 +88,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         boolean isNetworkEnabled = false;
         boolean canGetLocation = false;
         String busNumber;
+        ProgressDialog progressDialog;
 
         Map<String, Integer> dict = new HashMap<>();
         @SuppressLint("UseSparseArrays")
@@ -116,19 +116,21 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
+            Log.d(TAG, "onCreate ...............................");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-
-        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
+        progressDialog = new ProgressDialog(this);
+      /*  FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
                         .setAction("Action", null).show();
             }
-        });
+        });*/
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
@@ -150,8 +152,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
 
-        Log.d(TAG, "onCreate ...............................");
-
         createLocationRequest();
 
         //show error dialog if GoolglePlayServices not available
@@ -168,6 +168,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             return;
         }
+
         mFusedLocationClient.getLastLocation()
                 .addOnSuccessListener(this, new OnSuccessListener<Location>() {
                     @Override
@@ -179,34 +180,26 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         }
                     }
                 });
-        mLocationCallback = new LocationCallback() {
-            @Override
-            public void onLocationResult(LocationResult locationResult) {
-                for (Location location : locationResult.getLocations()) {
-                    // Update UI with location data
-                    // ...
-                    mCurrentLocation = location;
-                    //onMapReady(mMap);
-                    if (null != mCurrentLocation) {
-                        String lat = String.valueOf(mCurrentLocation.getLatitude());
-                        String lng = String.valueOf(mCurrentLocation.getLongitude());
-                        mDatabase = FirebaseDatabase.getInstance().getReference();
 
-                        if (checkBusSelection != 0) {
+            FirebaseAuth mAuth = FirebaseAuth.getInstance();
+            FirebaseUser currentUser = mAuth.getCurrentUser();
 
-                            DatabaseReference userDatabase = mDatabase.child(USER).child(busNumber);
-                            userDatabase.child(LATITUDE).setValue(lat);
-                            userDatabase.child(LONGITUDE).setValue(lng);
-
-                        }
-
-                    } else {
-                        Log.d(TAG, "My location is null ...............");
-                    }
-                }
+            if (currentUser == null) {
+                    mAuth.signOut();
+                    Intent i = new Intent(MainActivity.this, Login.class);
+                    startActivity(i);
+                    finish();
             }
 
-        };
+            mLocationCallback = new LocationCallback() {
+                    @Override
+                    public void onLocationResult(LocationResult locationResult) {
+                            for (Location location : locationResult.getLocations()) {
+                                    mCurrentLocation = location;
+                            }
+                    }
+
+            };
     }
 
     @Override
@@ -246,6 +239,28 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         mMap.setMyLocationEnabled(true);
         String str = "My Location";
         if (null != mCurrentLocation) {
+
+                SharedPreferences myPrefs = this.getSharedPreferences("contact", MODE_PRIVATE);
+                busNumber = myPrefs.getString("email", "stupid");
+                busNumber = busNumber.split("@")[0];
+                Log.d(TAG, "split(1) =  "  + busNumber);
+                busNumber = busNumber.split("bus")[1];
+                Log.d(TAG, "busNumberDebug = " + busNumber);
+                busNumber = "b" + busNumber;
+
+                if (null != mCurrentLocation) {
+                        String lat = String.valueOf(mCurrentLocation.getLatitude());
+                        String lng = String.valueOf(mCurrentLocation.getLongitude());
+                        mDatabase = FirebaseDatabase.getInstance().getReference();
+
+                        DatabaseReference userDatabase = mDatabase.child(USER).child(busNumber);
+                        userDatabase.child(LATITUDE).setValue(lat);
+                        userDatabase.child(LONGITUDE).setValue(lng);
+                        Log.d(TAG, "userDatabase@ =  "+ userDatabase.toString());
+
+                } else {
+                        Log.d(TAG, "My location is null ...............");
+                }
 
             Geocoder geocoder = new Geocoder(getApplicationContext());
 
@@ -299,7 +314,18 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         // Handle navigation view item clicks here.
         int id = item.getItemId();
 
-        if (id == R.id.nav_camera) {
+        switch (id) {
+            case R.id.signOut :
+                signingOut();
+                break;
+            case R.id.about :
+                break;
+            case R.id.help :
+                break;
+            case R.id.Home :
+                break;
+        }
+       /* if (id == R.id.nav_camera) {
             // Handle the camera action
         } else if (id == R.id.nav_gallery) {
 
@@ -311,7 +337,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         } else if (id == R.id.nav_send) {
 
-        }
+        }*/
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         drawer.closeDrawer(GravityCompat.START);
@@ -336,46 +362,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     public void onStart() {
         super.onStart();
 
-        FirebaseAuth mAuth = FirebaseAuth.getInstance();
-        FirebaseUser currentUser = mAuth.getCurrentUser();
-
-        if (currentUser == null) {
-            mAuth.signOut();
-            Intent i = new Intent(MainActivity.this, Login.class);
-            startActivity(i);
-            finish();
-        }
-        else {
-            SharedPreferences myPrefs = this.getSharedPreferences("contact", MODE_PRIVATE);
-            busNumber = myPrefs.getString("password", "b1");
-            Log.d(TAG, "busNumber = " + busNumber);
-            //busNumber = "b1";
-            //Log.d(TAG, "initial busNumber = " + busNumber);
-
-            switch (busNumber) {
-                case "busNumber1" :
-                    busNumber = "b1";
-                    break;
-                case "busNumber2" :
-                    busNumber = "b2";
-                    break;
-                case "busNumber3" :
-                    busNumber = "b3";
-                    break;
-                case "busNumber4" :
-                    busNumber = "b4";
-                    break;
-                case "busNumber5" :
-                    busNumber = "b5";
-                    break;
-            }
-        }
         Log.d(TAG, "onStart fired ..............");
         mGoogleApiClient.connect();
         if (!checkPermissions()) {
             requestPermissions();
         }
     }
+
 
     private boolean checkPermissions() {
         int permissionState = ActivityCompat.checkSelfPermission(this,
@@ -463,8 +456,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             startLocationUpdates();
         }
     }
-    String latitudeStr = null;
-    String longitudeStr  = null;
+
+    //powerful function
     protected void startLocationUpdates() {
         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             // TODO: Consider calling
@@ -490,6 +483,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         try {
             Log.d(TAG, "mDatabase.child(VEHICLE).child(busNumber) = " +mDatabase.child(VEHICLE).child(busNumber).toString());
             final DatabaseReference mRef = mDatabase.child(VEHICLE).child(busNumber);
+                Log.d(TAG, "mRef = " + mRef.toString());
             mRef.addChildEventListener(new ChildEventListener() {
                 @Override
                 public void onChildAdded(DataSnapshot dataSnapshot, String s) {
@@ -502,7 +496,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         Log.d(TAG, "key = "+ key);
 
                         if (!key.equals("temp")) {
-                            DatabaseReference locationRef = mRef.child(key).child(key);
+                            DatabaseReference locationRef = mRef.child(key).child("LOCATION");
                             Log.d(TAG, "locationRef =  "+ locationRef.toString());
                             locationRef.addValueEventListener(new ValueEventListener() {
                                 @Override
@@ -829,9 +823,35 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         Intent i = new Intent(MainActivity.this, Login.class);
         FirebaseAuth.getInstance().signOut();
+
+        progressDialog.setTitle("Catch App");
+        progressDialog.setMessage("Logging Out...");
+        progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+        progressDialog.show();
+        progressDialog.setCancelable(true);
+        new Thread(new Runnable() {
+              public void run() {
+                      try {
+                              Thread.sleep(5000);
+                      } catch (Exception e) {
+                              e.printStackTrace();
+                      }
+                      if (progressDialog != null)
+                              progressDialog.dismiss();
+            }
+        }).start();
+
         startActivity(i);
         finish();
 
     }
+        @Override
+        public void onDestroy() {
+                super.onDestroy();
+                if (progressDialog != null) {
+                        progressDialog.dismiss();
+                        progressDialog = null;
+                }
+        }
 
 }
