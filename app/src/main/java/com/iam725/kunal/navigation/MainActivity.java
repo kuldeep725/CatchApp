@@ -57,6 +57,7 @@ import com.google.firebase.database.GenericTypeIndicator;
 import com.google.firebase.database.ValueEventListener;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -107,6 +108,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         TextView duration;
         protected LocationManager locationManager;
         static int i = 0;
+        private ArrayList<Marker> markerset = new ArrayList<>();
 
         protected void createLocationRequest() {
                 mLocationRequest = new LocationRequest();
@@ -277,10 +279,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
             mMap.addMarker(new MarkerOptions()
                     .position(new LatLng(mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude()))
-                    .title(str)).setIcon(BitmapDescriptorFactory.fromResource(R.drawable.start_blue));
+                    .title(str)).setIcon(BitmapDescriptorFactory.fromResource(R.drawable.end_green));
             mMap.animateCamera(CameraUpdateFactory.newLatLng(
                     new LatLng(mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude())));
-
 
         }
 
@@ -300,8 +301,15 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
 
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
+        if (id == R.id.refresh) {
+
+                if (mMap != null) {
+                        mMap.clear();
+                }
+                onMapReady(mMap);
+                startLocationUpdates();
+        }
+        else if (id == R.id.action_settings) {
             return true;
         }
 
@@ -484,6 +492,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             Log.d(TAG, "mDatabase.child(VEHICLE).child(busNumber) = " +mDatabase.child(VEHICLE).child(busNumber).toString());
             final DatabaseReference mRef = mDatabase.child(VEHICLE).child(busNumber);
                 Log.d(TAG, "mRef = " + mRef.toString());
+
             mRef.addChildEventListener(new ChildEventListener() {
                 @Override
                 public void onChildAdded(DataSnapshot dataSnapshot, String s) {
@@ -509,12 +518,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                                                                 Map<String, Map<String, String>> map = dataSnapshot.getValue(genericTypeIndicator);*/
                                     //Map<String, String> newMap =
                                     if (map != null) {
-                                        Log.d(TAG, "map in onValueEventListener =  " + map);
+                                        Log.d(TAG, "onDataChange-map in onValueEventListener =  " + map);
                                         String latitudeStr = map.get(LATITUDE);
                                         String longitudeStr = map.get(LONGITUDE);
 
-                                        Log.d(TAG, "Latitude = " + latitudeStr);
-                                        Log.d(TAG, "Longitude = " + longitudeStr);
+                                        Log.d(TAG, "onDataChange-Latitude = " + latitudeStr);
+                                        Log.d(TAG, "onDataChange-Longitude = " + longitudeStr);
 
                                         double latitude = Double.parseDouble(latitudeStr);
                                         double longitude = Double.parseDouble(longitudeStr);
@@ -529,26 +538,26 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                                                 List<Address> addressList = geocoder.getFromLocation(latitude, longitude, 1);
                                                 str = addressList.get(0).getLocality() + ",";
                                                 str += addressList.get(0).getCountryName();
-                                                Log.d(TAG, "GEOCODER STARTED.");
+                                                Log.d(TAG, "onDataChange-GEOCODER STARTED.");
                                             } catch (IOException e) {
                                                 e.printStackTrace();
-                                                Log.e(TAG, "GEOCODER DIDN'T WORK.");
+                                                Log.e(TAG, "onDataChange-GEOCODER DIDN'T WORK.");
                                             }
                                             i = (int) dataSnapshot.getChildrenCount() - 1;
                                             markerName = mMap.addMarker(new MarkerOptions()
                                                     .position(new LatLng(latitude, longitude))
                                                     .title(str));
-                                            markerName.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.end_green));
+                                            markerName.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.start_blue));
                                             markers.put(i, markerName);
                                             mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(latitude, longitude), 12.0f));
-
-                                            Log.d(TAG, "markerName = " + markerName.toString());
+                                                markerset.add(markerName);
+                                            Log.d(TAG, "onDataChange-markerName = " + markerName.toString());
                                             dict.put(key, i);
                                             //Log.d(TAG, "dict = " + dict);
-                                            Log.d(TAG, "key = " + key);
-                                            Log.d(TAG, "i = " + i);
-                                            Log.d(TAG, "dict = " + dict.toString());
-                                            Log.d(TAG, "dict.get(key)  = " + dict.get(key));
+                                            Log.d(TAG, "onDataChange-key = " + key);
+                                            Log.d(TAG, "onDataChange-i = " + i);
+                                            Log.d(TAG, "onDataChange-dict = " + dict.toString());
+                                            Log.d(TAG, "onDataChange-dict.get(key)  = " + dict.get(key));
                                         }
                                     }
 
@@ -570,89 +579,28 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 @Override
                 public void onChildChanged(DataSnapshot dataSnapshot, String s) {
 
-                    Log.d(TAG, "dataSnapshot onChildChanged : " + dataSnapshot);
-                    GenericTypeIndicator<Map<String, Map<String, String>>> genericTypeIndicator = new GenericTypeIndicator<Map<String, Map<String, String>>>() {
-                    };
-                    Map<String, Map<String, String>> map = dataSnapshot.getValue(genericTypeIndicator);
-                    Log.d(TAG, "map = " + map);
-                    key = dataSnapshot.getKey();
-                    if (!key.equals("temp")) {
-                        DatabaseReference locationRef = mRef.child(key).child(key);
-                        locationRef.addValueEventListener(new ValueEventListener() {
-                            @Override
-                            public void onDataChange(DataSnapshot dataSnapshot) {
-                                GenericTypeIndicator<Map<String, String>> genericTypeIndicator = new GenericTypeIndicator<Map<String, String>>() {
-                                };
-                                Map<String, String> map = dataSnapshot.getValue(genericTypeIndicator);
-                                assert map != null;
-                                //Map<String, String> newMap =
-                                String latitudeStr = map.get(LATITUDE);
-                                String longitudeStr = map.get(LONGITUDE);
-
-                                Log.d(TAG, "Latitude = " + latitudeStr);
-                                Log.d(TAG, "Longitude = " + longitudeStr);
-
-                                double latitude = Double.parseDouble(latitudeStr);
-                                double longitude = Double.parseDouble(longitudeStr);
-                                LatLng latLng = new LatLng(latitude, longitude);
-
-                                String str = "Location";
-                                if (null != mCurrentLocation) {
-
-                                    Geocoder geocoder = new Geocoder(getApplicationContext());
-
-                                    try {
-                                        List<Address> addressList = geocoder.getFromLocation(latitude, longitude, 1);
-                                        str = addressList.get(0).getLocality() + ",";
-                                        str += addressList.get(0).getCountryName();
-                                        Log.d(TAG, "GEOCODER STARTED.");
-                                    } catch (IOException e) {
-                                        e.printStackTrace();
-                                        Log.e(TAG, "GEOCODER DIDN'T WORK.");
-                                    }
-                                    markerName = mMap.addMarker(new MarkerOptions()
-                                            .position(new LatLng(latitude, longitude))
-                                            .title(str));
-                                    markerName.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.end_green));
-                                    markers.put(i, markerName);
-                                    mMap.animateCamera(CameraUpdateFactory.newLatLng(
-                                            new LatLng(latitude, longitude)));
-
-                                    Log.d(TAG, "key = " + key);
-                                    Log.d(TAG, "i = " + i);
-                                    Log.d(TAG, "dict = " + dict.toString());
-                                    Log.d(TAG, "markerName = " + markerName);
-                                }
-
                             }
-
-                            @Override
-                            public void onCancelled(DatabaseError databaseError) {
-
-                            }
-
-                        });
-
-
-                        Log.d(TAG, "Data : " + dataSnapshot.getValue());
-                    }
-
-                }
 
                 @Override
                 public void onChildRemoved(DataSnapshot dataSnapshot) {
-                    int userToDelete = dict.get(dataSnapshot.getKey());
-                    Marker markerName = markers.get(userToDelete);
-                    Log.d(TAG, "k = " + userToDelete);
-                    Log.d(TAG, "markerName BEFORE DELETION = " + markerName);
-                    Log.d(TAG, "markerName.toString() BEFORE DELETION = " + markerName.toString());
+//                    int userToDelete = dict.get(dataSnapshot.getKey());
+//                    Log.d(TAG, "onChildRemoved-userToDelete = " + userToDelete);
+//                    Marker markerName = markers.get(userToDelete);
+//                    Log.d(TAG, "onChildRemoved-markerName BEFORE DELETION = " + markerName);
+//                    Log.d(TAG, "onChildRemoved-markerName.toString() BEFORE DELETION = " + markerName.toString());
+//
+//                    if (markerName != null) {
+//                        markerName.remove();
+//                        assert  markerName == null;
+//                        //Log.d(TAG, "onChildRemoved-markerName AFTER DELETION = " + markerName);
+//                        //Log.d(TAG, "onChildRemoved-markerName.toString() AFTER DELETION = " + markerName.toString());
+//                        i = (int) dataSnapshot.getChildrenCount() - 1;
+//                    }
+                        assert  mMap != null;
+                        mMap.clear();
+                        onMapReady(mMap);
+                        startLocationUpdates();
 
-                    if (markerName != null) {
-                        markerName.remove();
-                        Log.d(TAG, "markerName AFTER DELETION = " + markerName);
-                        Log.d(TAG, "markerName.toString() AFTER DELETION = " + markerName.toString());
-                        i = (int) dataSnapshot.getChildrenCount() - 1;
-                    }
                 }
 
                 @Override
@@ -665,128 +613,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                 }
             });
-
-                       /* mRef.addValueEventListener(new ValueEventListener() {
-                                @Override
-                                public void onDataChange(DataSnapshot dataSnapshot) {
-                                        for (DataSnapshot postDataSnapShot : dataSnapshot.getChildren()) {
-                                                GenericTypeIndicator<Map<String, String>> genericTypeIndicator = new GenericTypeIndicator<Map<String, String>>() {
-                                                };
-                                                Map<String, String> map = postDataSnapShot.getValue(genericTypeIndicator);
-                                                Log.d(TAG,"map = "+ map);
-                                                String userId = dataSnapshot.getKey();
-                                                dict = new Map<String, Integer>() {
-                                                        @Override
-                                                        public int size() {
-                                                                return 0;
-                                                        }
-
-                                                        @Override
-                                                        public boolean isEmpty() {
-                                                                return false;
-                                                        }
-
-                                                        @Override
-                                                        public boolean containsKey(Object key) {
-                                                                return false;
-                                                        }
-
-                                                        @Override
-                                                        public boolean containsValue(Object value) {
-                                                                return false;
-                                                        }
-
-                                                        @Override
-                                                        public Integer get(Object key) {
-                                                                return null;
-                                                        }
-
-                                                        @Override
-                                                        public Integer put(String key, Integer value) {
-                                                                return null;
-                                                        }
-
-                                                        @Override
-                                                        public Integer remove(Object key) {
-                                                                return null;
-                                                        }
-
-                                                        @Override
-                                                        public void putAll(@NonNull Map<? extends String, ? extends Integer> m) {
-
-                                                        }
-
-                                                        @Override
-                                                        public void clear() {
-
-                                                        }
-
-                                                        @NonNull
-                                                        @Override
-                                                        public Set<String> keySet() {
-                                                                return null;
-                                                        }
-
-                                                        @NonNull
-                                                        @Override
-                                                        public Collection<Integer> values() {
-                                                                return null;
-                                                        }
-
-                                                        @NonNull
-                                                        @Override
-                                                        public Set<Entry<String, Integer>> entrySet() {
-                                                                return null;
-                                                        }
-                                                };
-                                                dict.put(userId, i++);
-
-                                                Log.d(TAG, "Data : " + dataSnapshot.getValue());
-
-                                                assert map != null;
-                                                String latitudeStr = map.get("latitude");
-                                                String longitudeStr = map.get("longitude");
-
-                                                Log.d(TAG, "Latitude = " + latitudeStr);
-                                                Log.d(TAG, "Longitude = " + longitudeStr);
-
-                                                double latitude = Double.parseDouble(latitudeStr);
-                                                double longitude = Double.parseDouble(longitudeStr);
-                                                LatLng latLng = new LatLng(latitude, longitude);
-
-                                                String str = "Location";
-                                                if (null != mCurrentLocation) {
-
-                                                        Geocoder geocoder = new Geocoder(getApplicationContext());
-
-                                                        try {
-                                                                List<Address> addressList = geocoder.getFromLocation(latitude, longitude, 1);
-                                                                str = addressList.get(0).getLocality() + ",";
-                                                                str += addressList.get(0).getCountryName();
-                                                                Log.d(TAG, "GEOCODER STARTED.");
-                                                        } catch (IOException e) {
-                                                                e.printStackTrace();
-                                                                Log.e(TAG, "GEOCODER DIDN'T WORK.");
-                                                        }
-                                                        markerName = mMap.addMarker(new MarkerOptions()
-                                                                .position(new LatLng(latitude, longitude))
-                                                                .title(str));
-                                                        markerName.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.end_green));
-                                                        markers.put(i, markerName);
-                                                        mMap.animateCamera(CameraUpdateFactory.newLatLng(
-                                                                new LatLng(latitude, longitude)));
-
-                                                }
-                                        }
-
-                                }
-
-                                @Override
-                                public void onCancelled(DatabaseError databaseError) {
-
-                                }
-                        });*/
-
         }
         catch (Exception e) {
             Log.e(TAG, "ERROR : " + e.toString());
