@@ -3,6 +3,7 @@ package com.iam725.kunal.navigation;
 import android.annotation.SuppressLint;
 import android.app.ProgressDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -18,6 +19,7 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
@@ -26,6 +28,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesUtil;
@@ -244,24 +247,58 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                 SharedPreferences myPrefs = this.getSharedPreferences("contact", MODE_PRIVATE);
                 busNumber = myPrefs.getString("email", "stupid");
-                busNumber = busNumber.split("@")[0];
-                Log.d(TAG, "split(1) =  "  + busNumber);
-                busNumber = busNumber.split("bus")[1];
-                Log.d(TAG, "busNumberDebug = " + busNumber);
-                busNumber = "b" + busNumber;
+                if (!busNumber.equals("stupid")) {
+                        if (!busNumber.contains("bus")) {
 
-                if (null != mCurrentLocation) {
-                        String lat = String.valueOf(mCurrentLocation.getLatitude());
-                        String lng = String.valueOf(mCurrentLocation.getLongitude());
-                        mDatabase = FirebaseDatabase.getInstance().getReference();
+                                Toast.makeText(this, "You are not in the list", Toast.LENGTH_SHORT).show();
+                                Intent i = new Intent(MainActivity.this, Login.class);
+                                FirebaseAuth.getInstance().signOut();
 
-                        DatabaseReference userDatabase = mDatabase.child(USER).child(busNumber);
-                        userDatabase.child(LATITUDE).setValue(lat);
-                        userDatabase.child(LONGITUDE).setValue(lng);
-                        Log.d(TAG, "userDatabase@ =  "+ userDatabase.toString());
+                                progressDialog.setTitle("Catch App");
+                                progressDialog.setMessage("Logging Out...");
+                                progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+                                progressDialog.show();
+                                progressDialog.setCancelable(true);
+                                new Thread(new Runnable() {
+                                        public void run() {
+                                                try {
+                                                        Thread.sleep(5000);
+                                                } catch (Exception e) {
+                                                        e.printStackTrace();
+                                                }
+                                                if (progressDialog != null) {
+                                                        progressDialog.dismiss();
+                                                        progressDialog = null;
+                                                }
 
-                } else {
-                        Log.d(TAG, "My location is null ...............");
+                                        }
+                                }).start();
+
+                                startActivity(i);
+                                finish();
+
+                        }
+                        busNumber = busNumber.split("@")[0];
+                        Log.d(TAG, "split(1) =  "  + busNumber);
+                        if (busNumber.contains("bus")) {
+                                busNumber = busNumber.split("bus")[1];
+                        }
+                        Log.d(TAG, "busNumberDebug = " + busNumber);
+                        busNumber = "b" + busNumber;
+
+                        if (null != mCurrentLocation) {
+                                String lat = String.valueOf(mCurrentLocation.getLatitude());
+                                String lng = String.valueOf(mCurrentLocation.getLongitude());
+                                mDatabase = FirebaseDatabase.getInstance().getReference();
+
+                                DatabaseReference userDatabase = mDatabase.child(USER).child(busNumber);
+                                userDatabase.child(LATITUDE).setValue(lat);
+                                userDatabase.child(LONGITUDE).setValue(lng);
+                                Log.d(TAG, "userDatabase@ =  "+ userDatabase.toString());
+
+                        } else {
+                                Log.d(TAG, "My location is null ...............");
+                        }
                 }
 
             Geocoder geocoder = new Geocoder(getApplicationContext());
@@ -324,7 +361,20 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         switch (id) {
             case R.id.signOut :
-                signingOut();
+                    new AlertDialog.Builder(this)
+                            .setIcon(android.R.drawable.ic_dialog_alert)
+                            .setTitle("Closing Activity")
+                            .setMessage("Are you sure you want to log out ?")
+                            .setPositiveButton("Yes", new DialogInterface.OnClickListener()
+                            {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+                                            signingOut();
+                                    }
+
+                            })
+                            .setNegativeButton("No", null)
+                            .show();
                 break;
             case R.id.about :
                 break;
@@ -453,7 +503,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
     protected void stopLocationUpdates() {
-        mFusedLocationClient.removeLocationUpdates(mLocationCallback);
+            if (mFusedLocationClient != null)
+                    mFusedLocationClient.removeLocationUpdates(mLocationCallback);
         Log.d(TAG, "Location update stopped .......................");
     }
 
@@ -662,8 +713,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                       } catch (Exception e) {
                               e.printStackTrace();
                       }
-                      if (progressDialog != null)
+                      if (progressDialog != null) {
                               progressDialog.dismiss();
+                              progressDialog = null;
+                      }
+
             }
         }).start();
 

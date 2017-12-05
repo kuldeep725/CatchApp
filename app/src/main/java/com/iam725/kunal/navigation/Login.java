@@ -3,7 +3,6 @@ package com.iam725.kunal.navigation;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -30,7 +29,6 @@ public class Login extends AppCompatActivity {
         private EditText emailEditText;
         private EditText passwordEditText;
         private String email;
-        private String password;
         ProgressDialog progressDialog;
         //private TextView mStatusTextView;
         //private TextView mDetailTextView;
@@ -93,7 +91,7 @@ public class Login extends AppCompatActivity {
         private void signIn() {
 
                 email = emailEditText.getText().toString();
-                password = passwordEditText.getText().toString();
+                String password = passwordEditText.getText().toString();
 
                 Log.d(TAG, "signIn:" + email);
                 if (!validateForm()) {
@@ -119,7 +117,7 @@ public class Login extends AppCompatActivity {
 //                                                Ed.putString("Unm",Value );
 //                                                Ed.putString("Psw",Value);
 //                                                Ed.commit();
-                                                SharedPreferences prefs = Login.this.getSharedPreferences("contact", MODE_PRIVATE);
+                                                final SharedPreferences prefs = Login.this.getSharedPreferences("contact", MODE_PRIVATE);
                                                 SharedPreferences.Editor prefsEditor = prefs.edit();
                                                 prefsEditor.putString("email", email);
                                                 prefsEditor.apply();
@@ -137,8 +135,11 @@ public class Login extends AppCompatActivity {
                                                                 } catch (Exception e) {
                                                                         e.printStackTrace();
                                                                 }
-                                                                if (progressDialog != null)
+                                                                if (progressDialog != null) {
                                                                         progressDialog.dismiss();
+                                                                        progressDialog = null;
+                                                                }
+
                                                         }
                                                 }).start();
 //                                                ProgressDialogForLoggingIn dialog = new ProgressDialogForLoggingIn(Login.this);
@@ -184,31 +185,31 @@ public class Login extends AppCompatActivity {
 
                 return valid;
         }
-        private class ProgressDialogForLoggingIn extends AsyncTask<Void, Void, Void> {
-                private ProgressDialog dialog;
-
-                ProgressDialogForLoggingIn(Login activity) {
-                        dialog = new ProgressDialog(activity);
-                }
-
-                @Override
-                protected void onPreExecute() {
-                        dialog.setMessage("Doing something, please wait.");
-                        dialog.show();
-                }
-
-                protected Void doInBackground(Void... args) {
-                        // do background work here
-                        return null;
-                }
-
-                protected void onPostExecute(Void result) {
-                        // do UI work here
-                        if (dialog.isShowing()) {
-                                dialog.dismiss();
-                        }
-                }
-        }
+//        private class ProgressDialogForLoggingIn extends AsyncTask<Void, Void, Void> {
+//                private ProgressDialog dialog;
+//
+//                ProgressDialogForLoggingIn(Login activity) {
+//                        dialog = new ProgressDialog(activity);
+//                }
+//
+//                @Override
+//                protected void onPreExecute() {
+//                        dialog.setMessage("Doing something, please wait.");
+//                        dialog.show();
+//                }
+//
+//                protected Void doInBackground(Void... args) {
+//                        // do background work here
+//                        return null;
+//                }
+//
+//                protected void onPostExecute(Void result) {
+//                        // do UI work here
+//                        if (dialog.isShowing()) {
+//                                dialog.dismiss();
+//                        }
+//                }
+//        }
         @Override
         public void onDestroy() {
                 super.onDestroy();
