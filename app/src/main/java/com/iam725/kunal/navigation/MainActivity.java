@@ -69,7 +69,7 @@ import java.util.Map;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback, LocationListener,
         GoogleApiClient.ConnectionCallbacks,
-        GoogleApiClient.OnConnectionFailedListener, NavigationView.OnNavigationItemSelectedListener{
+        GoogleApiClient.OnConnectionFailedListener, NavigationView.OnNavigationItemSelectedListener {
 
         private static final String TAG = "VehicleMapsActivity";
         private static final long INTERVAL = 1000 * 10;             //time in milliseconds
@@ -112,6 +112,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         protected LocationManager locationManager;
         static int i = 0;
         private ArrayList<Marker> markerset = new ArrayList<>();
+        private final String ROUTE = "route";
+        private LatLng nearestLatlng = null;
+        private double dist = 0;
+        private double dur = 0;
+        private double minDistance = Double.MAX_VALUE;
+        private LatLng minLocation = null;
+        private int noOfChildren = 0;
+        private Marker myLocationMarker;
 
         protected void createLocationRequest() {
                 mLocationRequest = new LocationRequest();
@@ -119,15 +127,16 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 mLocationRequest.setFastestInterval(FASTEST_INTERVAL);
                 mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
         }
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
 
-            Log.d(TAG, "onCreate ...............................");
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
-        progressDialog = new ProgressDialog(this);
+        @Override
+        protected void onCreate(Bundle savedInstanceState) {
+
+                Log.d(TAG, "onCreate ...............................");
+                super.onCreate(savedInstanceState);
+                setContentView(R.layout.activity_main);
+                Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+                setSupportActionBar(toolbar);
+                progressDialog = new ProgressDialog(this);
       /*  FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -137,194 +146,211 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         });*/
 
-        DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
-        ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
-            this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
-        drawer.setDrawerListener(toggle);
-        toggle.syncState();
+                DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
+                ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
+                        this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
+                drawer.setDrawerListener(toggle);
+                toggle.syncState();
 
-        NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
-        navigationView.setNavigationItemSelectedListener((NavigationView.OnNavigationItemSelectedListener) this);
+                NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
+                navigationView.setNavigationItemSelectedListener((NavigationView.OnNavigationItemSelectedListener) this);
 
-        // Obtain the SupportMapFragment and get notified when the map is ready to be used.
-        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
-                .findFragmentById(R.id.map);
-        mapFragment.getMapAsync(this);
+                // Obtain the SupportMapFragment and get notified when the map is ready to be used.
+                SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
+                        .findFragmentById(R.id.map);
+                mapFragment.getMapAsync(this);
 
-        mRequestingLocationUpdates = false;
-        FirebaseApp.initializeApp(this);
-        mDatabase = FirebaseDatabase.getInstance().getReference();
+                mRequestingLocationUpdates = false;
+                FirebaseApp.initializeApp(this);
+                mDatabase = FirebaseDatabase.getInstance().getReference();
 
-        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+                mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
 
-        createLocationRequest();
+                createLocationRequest();
 
-        //show error dialog if GoolglePlayServices not available
+                //show error dialog if GoolglePlayServices not available
         /*if (!isGooglePlayServicesAvailable()) {
             finish();
         }*/
 
-        mGoogleApiClient = new GoogleApiClient.Builder(this)
-                .addApi(LocationServices.API)
-                .addConnectionCallbacks(this)
-                .addOnConnectionFailedListener(this)
-                .build();
+                mGoogleApiClient = new GoogleApiClient.Builder(this)
+                        .addApi(LocationServices.API)
+                        .addConnectionCallbacks(this)
+                        .addOnConnectionFailedListener(this)
+                        .build();
 
-        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            return;
-        }
+                if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                        return;
+                }
 
-        mFusedLocationClient.getLastLocation()
-                .addOnSuccessListener(this, new OnSuccessListener<Location>() {
-                    @Override
-                    public void onSuccess(Location location) {
-                        // Got last known location. In some rare situations this can be null.
-                        if (location != null) {
-                            mCurrentLocation = location;
-                            onMapReady(mMap);
+                mFusedLocationClient.getLastLocation()
+                        .addOnSuccessListener(this, new OnSuccessListener<Location>() {
+                                @Override
+                                public void onSuccess(Location location) {
+                                        // Got last known location. In some rare situations this can be null.
+                                        if (location != null) {
+                                                mCurrentLocation = location;
+                                                onMapReady(mMap);
+                                        }
+                                }
+                        });
+
+                FirebaseAuth mAuth = FirebaseAuth.getInstance();
+                FirebaseUser currentUser = mAuth.getCurrentUser();
+
+                if (currentUser == null) {
+                        mAuth.signOut();
+                        Intent i = new Intent(MainActivity.this, Login.class);
+                        startActivity(i);
+                        finish();
+                }
+
+                mLocationCallback = new LocationCallback() {
+                        @Override
+                        public void onLocationResult(LocationResult locationResult) {
+                                for (Location location : locationResult.getLocations()) {
+                                        mCurrentLocation = location;
+                                        showMyLocationMarker();
+                                }
                         }
-                    }
-                });
 
-            FirebaseAuth mAuth = FirebaseAuth.getInstance();
-            FirebaseUser currentUser = mAuth.getCurrentUser();
-
-            if (currentUser == null) {
-                    mAuth.signOut();
-                    Intent i = new Intent(MainActivity.this, Login.class);
-                    startActivity(i);
-                    finish();
-            }
-
-            mLocationCallback = new LocationCallback() {
-                    @Override
-                    public void onLocationResult(LocationResult locationResult) {
-                            for (Location location : locationResult.getLocations()) {
-                                    mCurrentLocation = location;
-                            }
-                    }
-
-            };
-    }
-
-    @Override
-    public void onBackPressed() {
-        DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
-        if (drawer.isDrawerOpen(GravityCompat.START)) {
-            drawer.closeDrawer(GravityCompat.START);
-        } else {
-            super.onBackPressed();
+                };
         }
-    }
-    @Override
-    public void onMapReady(GoogleMap googleMap) {
-        mMap = googleMap;
-        // Show Zoom buttons
-        mMap.getUiSettings().setZoomControlsEnabled(true);
-        // Turns traffic layer on
-        mMap.setTrafficEnabled(true);
-        // Enables indoor maps
-        mMap.setIndoorEnabled(true);
-        //Turns on 3D buildings
-        mMap.setBuildingsEnabled(true);
-        // Add a marker in Sydney and move the camera
+
+        @Override
+        public void onBackPressed() {
+                DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
+                if (drawer.isDrawerOpen(GravityCompat.START)) {
+                        drawer.closeDrawer(GravityCompat.START);
+                } else {
+                        super.onBackPressed();
+                }
+        }
+
+        @Override
+        public void onMapReady(GoogleMap googleMap) {
+                mMap = googleMap;
+                // Show Zoom buttons
+                mMap.getUiSettings().setZoomControlsEnabled(false);
+                // Turns traffic layer on
+                mMap.setTrafficEnabled(true);
+                // Enables indoor maps
+                mMap.setIndoorEnabled(false);
+                //Turns on 3D buildings
+                mMap.setBuildingsEnabled(true);
+                mMap.getUiSettings().setMapToolbarEnabled(false);
+                // Add a marker in Sydney and move the camera
                 /*LatLng sydney = new LatLng(-34, 151);
                 mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
                 mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));*/
-        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
 
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
-            return;
-        }
-        mMap.setMyLocationEnabled(true);
-        String str = "My Location";
-        if (null != mCurrentLocation) {
+                        //    ActivityCompat#requestPermissions
+                        // here to request the missing permissions, and then overriding
+                        //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                        //                                          int[] grantResults)
+                        // to handle the case where the user grants the permission. See the documentation
+                        // for ActivityCompat#requestPermissions for more details.
+                        return;
+                }
+                mMap.setMyLocationEnabled(true);
+                String str = "My Location";
+                if (null != mCurrentLocation) {
 
-                SharedPreferences myPrefs = this.getSharedPreferences("contact", MODE_PRIVATE);
-                busNumber = myPrefs.getString("email", "stupid");
-                if (!busNumber.equals("stupid")) {
-                        if (!busNumber.contains("bus")) {
+                        SharedPreferences myPrefs = this.getSharedPreferences("contact", MODE_PRIVATE);
+                        busNumber = myPrefs.getString("email", "stupid");
+                        if (!busNumber.equals("stupid")) {
+                                if (!busNumber.contains("bus")) {
 
-                                Toast.makeText(this, "You are not in the list", Toast.LENGTH_SHORT).show();
-                                Intent i = new Intent(MainActivity.this, Login.class);
-                                FirebaseAuth.getInstance().signOut();
+                                        Toast.makeText(this, "You are not in the list", Toast.LENGTH_SHORT).show();
+                                        Intent i = new Intent(MainActivity.this, Login.class);
+                                        FirebaseAuth.getInstance().signOut();
 
-                                progressDialog.setTitle("Catch App");
-                                progressDialog.setMessage("Logging Out...");
-                                progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
-                                progressDialog.show();
-                                progressDialog.setCancelable(true);
-                                new Thread(new Runnable() {
-                                        public void run() {
-                                                try {
-                                                        Thread.sleep(5000);
-                                                } catch (Exception e) {
-                                                        e.printStackTrace();
+                                        progressDialog.setTitle("Catch App");
+                                        progressDialog.setMessage("Logging Out...");
+                                        progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+                                        progressDialog.show();
+                                        progressDialog.setCancelable(true);
+                                        new Thread(new Runnable() {
+                                                public void run() {
+                                                        try {
+                                                                Thread.sleep(5000);
+                                                        } catch (Exception e) {
+                                                                e.printStackTrace();
+                                                        }
+                                                        if (progressDialog != null) {
+                                                                progressDialog.dismiss();
+                                                                progressDialog = null;
+                                                        }
+
                                                 }
-                                                if (progressDialog != null) {
-                                                        progressDialog.dismiss();
-                                                        progressDialog = null;
-                                                }
+                                        }).start();
 
-                                        }
-                                }).start();
+                                        startActivity(i);
+                                        finish();
 
-                                startActivity(i);
-                                finish();
+                                }
+                                busNumber = busNumber.split("@")[0];
+                                Log.d(TAG, "split(1) =  " + busNumber);
+                                if (busNumber.contains("bus")) {
+                                        busNumber = busNumber.split("bus")[1];
+                                }
+                                Log.d(TAG, "busNumberDebug = " + busNumber);
+                                busNumber = "b" + busNumber;
 
-                        }
-                        busNumber = busNumber.split("@")[0];
-                        Log.d(TAG, "split(1) =  "  + busNumber);
-                        if (busNumber.contains("bus")) {
-                                busNumber = busNumber.split("bus")[1];
-                        }
-                        Log.d(TAG, "busNumberDebug = " + busNumber);
-                        busNumber = "b" + busNumber;
-
-                        if (null != mCurrentLocation) {
-                                String lat = String.valueOf(mCurrentLocation.getLatitude());
-                                String lng = String.valueOf(mCurrentLocation.getLongitude());
-                                mDatabase = FirebaseDatabase.getInstance().getReference();
-
-                                DatabaseReference userDatabase = mDatabase.child(USER).child(busNumber);
-                                userDatabase.child(LATITUDE).setValue(lat);
-                                userDatabase.child(LONGITUDE).setValue(lng);
-                                Log.d(TAG, "userDatabase@ =  "+ userDatabase.toString());
-
-                        } else {
-                                Log.d(TAG, "My location is null ...............");
                         }
                 }
-
-            Geocoder geocoder = new Geocoder(getApplicationContext());
-
-            try {
-                List<Address> addressList = geocoder.getFromLocation(mCurrentLocation.getLatitude(),
-                        mCurrentLocation.getLongitude(), 1);
-                str = addressList.get(0).getLocality() + ",";
-                str += addressList.get(0).getCountryName();
-                Log.d(TAG, "GEOCODER STARTED.");
-            } catch (IOException e) {
-                e.printStackTrace();
-                Log.e(TAG, "GEOCODER DIDN'T WORK.");
-            }
-
-            mMap.addMarker(new MarkerOptions()
-                    .position(new LatLng(mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude()))
-                    .title(str)).setIcon(BitmapDescriptorFactory.fromResource(R.drawable.end_green));
-            mMap.animateCamera(CameraUpdateFactory.newLatLng(
-                    new LatLng(mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude())));
+                showMyLocationMarker();
 
         }
 
-    }
+        private void showMyLocationMarker() {
 
-    @Override
+                if (null != mCurrentLocation) {
+                        String lat = String.valueOf(mCurrentLocation.getLatitude());
+                        String lng = String.valueOf(mCurrentLocation.getLongitude());
+                        mDatabase = FirebaseDatabase.getInstance().getReference();
+
+                        DatabaseReference userDatabase = mDatabase.child(USER).child(busNumber).child("location");
+                        userDatabase.child(LATITUDE).setValue(lat);
+                        userDatabase.child(LONGITUDE).setValue(lng);
+                        Log.d(TAG, "userDatabase@ =  " + userDatabase.toString());
+
+                        String str = "My Location";
+                        Geocoder geocoder = new Geocoder(getApplicationContext());
+
+                        try {
+                                List<android.location.Address> addressList = geocoder.getFromLocation(mCurrentLocation.getLatitude(),
+                                        mCurrentLocation.getLongitude(), 1);
+                                str = "";
+                                if (addressList.get(0).getSubLocality() != null) {
+                                        str = addressList.get(0).getSubLocality()+",";
+                                }
+                                str += addressList.get(0).getLocality();
+                                Log.d(TAG, "GEOCODER STARTED.");
+                        } catch (IOException e) {
+                                e.printStackTrace();
+                                Log.e(TAG, "GEOCODER DIDN'T WORK.");
+                        }
+
+                        if (myLocationMarker != null) {
+                                myLocationMarker.remove();
+                        }
+                        myLocationMarker = mMap.addMarker(new MarkerOptions()
+                                .position(new LatLng(mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude()))
+                                .title(str));
+                        myLocationMarker.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.end_green));
+                        Log.e(TAG, "myLocationMarker = " + myLocationMarker);
+                        //                        mMap.animateCamera(CameraUpdateFactory.newLatLng(
+//                                new LatLng(mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude())));
+
+                } else {
+                        Log.d(TAG, "My location is null ...............");
+                }
+
+        }
+
+        @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.main, menu);
@@ -425,6 +451,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (!checkPermissions()) {
             requestPermissions();
         }
+            SharedPreferences loginPrefs = getSharedPreferences("contact", MODE_PRIVATE);
+            String userId = loginPrefs.getString("email", "User id");
+            Log.e(TAG, "userId = "+userId);
+            NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
+            View headerView = navigationView.getHeaderView(0);
+            TextView tv = (TextView) headerView.findViewById(R.id.user_id);
+            tv.setText(userId);
     }
 
 
@@ -518,122 +551,127 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     //powerful function
     protected void startLocationUpdates() {
-        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
-            return;
-        }
+            if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    // TODO: Consider calling
+                    //    ActivityCompat#requestPermissions
+                    // here to request the missing permissions, and then overriding
+                    //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                    //                                          int[] grantResults)
+                    // to handle the case where the user grants the permission. See the documentation
+                    // for ActivityCompat#requestPermissions for more details.
+                    return;
+            }
         /*PendingResult<Status> pendingResult = FusedLocationApi.requestLocationUpdates(
                 mGoogleApiClient, mLocationRequest, (com.google.android.gms.location.LocationListener) this);*/
-        Log.d(TAG, "Location update started ..............: ");
-        mFusedLocationClient.requestLocationUpdates(mLocationRequest,
-                mLocationCallback,
-                null /* Looper */);
-        mDatabase = FirebaseDatabase.getInstance().getReference();
-        Log.d(TAG, "mDatabase = " + mDatabase.toString());
-        Log.d(TAG, "busNumber  =  " + busNumber);
-        Log.d(TAG, "mDatabase.child(VEHICLE) = " + mDatabase.child(VEHICLE).toString());
+            Log.d(TAG, "Location update started ..............: ");
+            mFusedLocationClient.requestLocationUpdates(mLocationRequest,
+                    mLocationCallback,
+                    null /* Looper */);
+            mDatabase = FirebaseDatabase.getInstance().getReference();
+            Log.d(TAG, "mDatabase = " + mDatabase.toString());
+            Log.d(TAG, "busNumber  =  " + busNumber);
+            Log.d(TAG, "mDatabase.child(VEHICLE) = " + mDatabase.child(VEHICLE).toString());
 
-        try {
-            Log.d(TAG, "mDatabase.child(VEHICLE).child(busNumber) = " +mDatabase.child(VEHICLE).child(busNumber).toString());
-            final DatabaseReference mRef = mDatabase.child(VEHICLE).child(busNumber);
-                Log.d(TAG, "mRef = " + mRef.toString());
+            try {
+                    Log.d(TAG, "mDatabase.child(VEHICLE).child(busNumber) = " + mDatabase.child(VEHICLE).child(busNumber).toString());
+                    final DatabaseReference mRef = mDatabase.child(VEHICLE).child(busNumber);
+                    Log.d(TAG, "mRef = " + mRef.toString());
 
-            mRef.addChildEventListener(new ChildEventListener() {
-                @Override
-                public void onChildAdded(DataSnapshot dataSnapshot, String s) {
+                    mRef.addChildEventListener(new ChildEventListener() {
+                            @Override
+                            public void onChildAdded(DataSnapshot dataSnapshot, String s) {
 
-                    Log.d(TAG, "dataSnapshot onChildAdded : " + dataSnapshot);
+                                    Log.d(TAG, "dataSnapshot onChildAdded : " + dataSnapshot);
 
 //                                        Log.d(TAG, "map = " + map);
-                    if (!dataSnapshot.getKey().equals("temp")) {
-                        key = dataSnapshot.getKey();
-                        Log.d(TAG, "key = "+ key);
+                                    if (!dataSnapshot.getKey().equals("temp")) {
+                                            key = dataSnapshot.getKey();
+                                            Log.d(TAG, "key = " + key);
 
-                        if (!key.equals("temp")) {
-                            DatabaseReference locationRef = mRef.child(key).child("LOCATION");
-                            Log.d(TAG, "locationRef =  "+ locationRef.toString());
-                            locationRef.addValueEventListener(new ValueEventListener() {
-                                @Override
-                                public void onDataChange(DataSnapshot dataSnapshot) {
-                                    GenericTypeIndicator<Map<String, String>> genericTypeIndicator = new GenericTypeIndicator<Map<String, String>>() {
-                                    };
-                                    Map<String, String> map = dataSnapshot.getValue(genericTypeIndicator);
+                                            if (!key.equals("temp")) {
+                                                    DatabaseReference locationRef = mRef.child(key).child("LOCATION");
+                                                    Log.d(TAG, "locationRef =  " + locationRef.toString());
+                                                    locationRef.addValueEventListener(new ValueEventListener() {
+                                                            @Override
+                                                            public void onDataChange(DataSnapshot dataSnapshot) {
+                                                                    GenericTypeIndicator<Map<String, String>> genericTypeIndicator = new GenericTypeIndicator<Map<String, String>>() {
+                                                                    };
+                                                                    Map<String, String> map = dataSnapshot.getValue(genericTypeIndicator);
                                                                 /*GenericTypeIndicator<Map<String, Map<String, String>>> genericTypeIndicator = new GenericTypeIndicator<Map<String, Map<String, String>>>() {
                                                                 };
                                                                 Map<String, Map<String, String>> map = dataSnapshot.getValue(genericTypeIndicator);*/
-                                    //Map<String, String> newMap =
-                                    if (map != null) {
-                                        Log.d(TAG, "onDataChange-map in onValueEventListener =  " + map);
-                                        String latitudeStr = map.get(LATITUDE);
-                                        String longitudeStr = map.get(LONGITUDE);
+                                                                    //Map<String, String> newMap =
+                                                                    if (map != null) {
+                                                                            Log.d(TAG, "onDataChange-map in onValueEventListener =  " + map);
+                                                                            String latitudeStr = map.get(LATITUDE);
+                                                                            String longitudeStr = map.get(LONGITUDE);
 
-                                        Log.d(TAG, "onDataChange-Latitude = " + latitudeStr);
-                                        Log.d(TAG, "onDataChange-Longitude = " + longitudeStr);
+                                                                            Log.d(TAG, "onDataChange-Latitude = " + latitudeStr);
+                                                                            Log.d(TAG, "onDataChange-Longitude = " + longitudeStr);
 
-                                        double latitude = Double.parseDouble(latitudeStr);
-                                        double longitude = Double.parseDouble(longitudeStr);
-                                        LatLng latLng = new LatLng(latitude, longitude);
+                                                                            double latitude = Double.parseDouble(latitudeStr);
+                                                                            double longitude = Double.parseDouble(longitudeStr);
+                                                                            LatLng latLng = new LatLng(latitude, longitude);
 
-                                        String str = "Location";
-                                        if (null != mCurrentLocation) {
+                                                                            String str = "Location";
+                                                                            if (null != mCurrentLocation) {
 
-                                            Geocoder geocoder = new Geocoder(getApplicationContext());
+                                                                                    Geocoder geocoder = new Geocoder(getApplicationContext());
 
-                                            try {
-                                                List<Address> addressList = geocoder.getFromLocation(latitude, longitude, 1);
-                                                str = addressList.get(0).getLocality() + ",";
-                                                str += addressList.get(0).getCountryName();
-                                                Log.d(TAG, "onDataChange-GEOCODER STARTED.");
-                                            } catch (IOException e) {
-                                                e.printStackTrace();
-                                                Log.e(TAG, "onDataChange-GEOCODER DIDN'T WORK.");
+                                                                                    try {
+                                                                                            List<Address> addressList = geocoder.getFromLocation(latitude, longitude, 1);
+                                                                                            if (addressList.get(0).getSubLocality() != null) {
+                                                                                                    str = "";
+                                                                                                    str += addressList.get(0).getSubLocality() + ",";
+                                                                                            }
+                                                                                            str += addressList.get(0).getLocality();
+//                                                                                            str += addressList.get(0).getCountryName();
+                                                                                            Log.d(TAG, "onDataChange-GEOCODER STARTED.");
+                                                                                    } catch (IOException e) {
+                                                                                            e.printStackTrace();
+                                                                                            Log.e(TAG, "onDataChange-GEOCODER DIDN'T WORK.");
+                                                                                    }
+                                                                                    i = (int) dataSnapshot.getChildrenCount() - 1;
+                                                                                    markerName = mMap.addMarker(new MarkerOptions()
+                                                                                            .position(new LatLng(latitude, longitude))
+                                                                                            .title(str));
+                                                                                    markerName.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.start_blue));
+                                                                                    markers.put(i, markerName);
+                                                                                    mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(latitude, longitude), 12.0f));
+                                                                                    markerset.add(markerName);
+                                                                                    Log.d(TAG, "onDataChange-markerName = " + markerName.toString());
+                                                                                    dict.put(key, i);
+                                                                                    //Log.d(TAG, "dict = " + dict);
+                                                                                    Log.d(TAG, "onDataChange-key = " + key);
+                                                                                    Log.d(TAG, "onDataChange-i = " + i);
+                                                                                    Log.d(TAG, "onDataChange-dict = " + dict.toString());
+                                                                                    Log.d(TAG, "onDataChange-dict.get(key)  = " + dict.get(key));
+                                                                            }
+                                                                    }
+
+
+                                                            }
+
+                                                            @Override
+                                                            public void onCancelled(DatabaseError databaseError) {
+
+                                                            }
+
+                                                    });
+
+
+                                                    Log.d(TAG, "Data : " + dataSnapshot.getValue());
                                             }
-                                            i = (int) dataSnapshot.getChildrenCount() - 1;
-                                            markerName = mMap.addMarker(new MarkerOptions()
-                                                    .position(new LatLng(latitude, longitude))
-                                                    .title(str));
-                                            markerName.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.start_blue));
-                                            markers.put(i, markerName);
-                                            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(latitude, longitude), 12.0f));
-                                                markerset.add(markerName);
-                                            Log.d(TAG, "onDataChange-markerName = " + markerName.toString());
-                                            dict.put(key, i);
-                                            //Log.d(TAG, "dict = " + dict);
-                                            Log.d(TAG, "onDataChange-key = " + key);
-                                            Log.d(TAG, "onDataChange-i = " + i);
-                                            Log.d(TAG, "onDataChange-dict = " + dict.toString());
-                                            Log.d(TAG, "onDataChange-dict.get(key)  = " + dict.get(key));
-                                        }
                                     }
+                            }
 
-
-                                }
-
-                                @Override
-                                public void onCancelled(DatabaseError databaseError) {
-
-                                }
-
-                            });
-
-
-                            Log.d(TAG, "Data : " + dataSnapshot.getValue());
-                        }}
-                }
-
-                @Override
-                public void onChildChanged(DataSnapshot dataSnapshot, String s) {
+                            @Override
+                            public void onChildChanged(DataSnapshot dataSnapshot, String s) {
 
                             }
 
-                @Override
-                public void onChildRemoved(DataSnapshot dataSnapshot) {
+                            @Override
+                            public void onChildRemoved(DataSnapshot dataSnapshot) {
 //                    int userToDelete = dict.get(dataSnapshot.getKey());
 //                    Log.d(TAG, "onChildRemoved-userToDelete = " + userToDelete);
 //                    Marker markerName = markers.get(userToDelete);
@@ -647,31 +685,28 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 //                        //Log.d(TAG, "onChildRemoved-markerName.toString() AFTER DELETION = " + markerName.toString());
 //                        i = (int) dataSnapshot.getChildrenCount() - 1;
 //                    }
-                        assert  mMap != null;
-                        mMap.clear();
-                        onMapReady(mMap);
-                        startLocationUpdates();
+                                    assert mMap != null;
+                                    mMap.clear();
+                                    onMapReady(mMap);
+                                    startLocationUpdates();
 
-                }
+                            }
 
-                @Override
-                public void onChildMoved(DataSnapshot dataSnapshot, String s) {
+                            @Override
+                            public void onChildMoved(DataSnapshot dataSnapshot, String s) {
 
-                }
+                            }
 
-                @Override
-                public void onCancelled(DatabaseError databaseError) {
+                            @Override
+                            public void onCancelled(DatabaseError databaseError) {
 
-                }
-            });
-        }
-        catch (Exception e) {
-            Log.e(TAG, "ERROR : " + e.toString());
-        }
-
+                            }
+                    });
+            } catch (Exception e) {
+                    Log.e(TAG, "ERROR : " + e.toString());
+            }
     }
-
-    @Override
+        @Override
     protected void onSaveInstanceState(Bundle outState) {
         outState.putBoolean(REQUESTING_LOCATION_UPDATES_KEY,
                 mRequestingLocationUpdates);
