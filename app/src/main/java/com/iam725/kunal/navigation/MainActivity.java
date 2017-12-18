@@ -120,6 +120,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         private LatLng minLocation = null;
         private int noOfChildren = 0;
         private Marker myLocationMarker;
+        private LatLng pos;
 
         protected void createLocationRequest() {
                 mLocationRequest = new LocationRequest();
@@ -210,7 +211,17 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         public void onLocationResult(LocationResult locationResult) {
                                 for (Location location : locationResult.getLocations()) {
                                         mCurrentLocation = location;
-                                        showMyLocationMarker();
+                                        if (null != mCurrentLocation) {
+                                                String lat = String.valueOf(mCurrentLocation.getLatitude());
+                                                String lng = String.valueOf(mCurrentLocation.getLongitude());
+                                                mDatabase = FirebaseDatabase.getInstance().getReference();
+
+                                                DatabaseReference userDatabase = mDatabase.child(USER).child(busNumber).child("location");
+                                                userDatabase.child(LATITUDE).setValue(lat);
+                                                userDatabase.child(LONGITUDE).setValue(lng);
+                                                Log.d(TAG, "userDatabase@ =  " + userDatabase.toString());
+                                        }
+//                                        showMyLocationMarker();
                                 }
                         }
 
@@ -239,6 +250,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 //Turns on 3D buildings
                 mMap.setBuildingsEnabled(true);
                 mMap.getUiSettings().setMapToolbarEnabled(false);
+                mMap.setMyLocationEnabled(true);
                 // Add a marker in Sydney and move the camera
                 /*LatLng sydney = new LatLng(-34, 151);
                 mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
@@ -254,6 +266,28 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         return;
                 }
                 mMap.setMyLocationEnabled(true);
+                mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
+                        @Override
+                        public boolean onMarkerClick(Marker marker) {
+                                pos = marker.getPosition();
+//                                Log.e(TAG, "pos ="+pos);
+                                return false;
+                        }
+                });
+                mMap.setOnMapLongClickListener(new GoogleMap.OnMapLongClickListener() {
+                        @Override
+                        public void onMapLongClick(LatLng latLng) {
+                                if (pos != null) {
+//                                        Log.e(TAG, "Now pos = "+pos);
+                                        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(pos, 14.0f));
+                                        pos = null;
+                                }
+                                else {
+                                        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 14.0f));
+                                }
+
+                        }
+                });
                 String str = "My Location";
                 if (null != mCurrentLocation) {
 
@@ -341,7 +375,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                                 .title(str));
                         myLocationMarker.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.end_green));
                         Log.e(TAG, "myLocationMarker = " + myLocationMarker);
-                        //                        mMap.animateCamera(CameraUpdateFactory.newLatLng(
+                        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(
+                                new LatLng(mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude()), 14.0f));
+//                                                mMap.animateCamera(CameraUpdateFactory.newLatLng(
 //                                new LatLng(mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude())));
 
                 } else {
@@ -365,12 +401,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         int id = item.getItemId();
 
         if (id == R.id.refresh) {
-
-                if (mMap != null) {
-                        mMap.clear();
-                }
-                onMapReady(mMap);
-                startLocationUpdates();
+                refresh();
         }
         else if (id == R.id.action_settings) {
             return true;
@@ -379,7 +410,17 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         return super.onOptionsItemSelected(item);
     }
 
-    @SuppressWarnings("StatementWithEmptyBody")
+        private void refresh() {
+
+                if (mMap != null) {
+                        mMap.clear();
+                }
+                onMapReady(mMap);
+                startLocationUpdates();
+
+        }
+
+        @SuppressWarnings("StatementWithEmptyBody")
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
         // Handle navigation view item clicks here.
@@ -600,7 +641,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                                                                 /*GenericTypeIndicator<Map<String, Map<String, String>>> genericTypeIndicator = new GenericTypeIndicator<Map<String, Map<String, String>>>() {
                                                                 };
                                                                 Map<String, Map<String, String>> map = dataSnapshot.getValue(genericTypeIndicator);*/
-                                                                    //Map<String, String> newMap =
+
                                                                     if (map != null) {
                                                                             Log.d(TAG, "onDataChange-map in onValueEventListener =  " + map);
                                                                             String latitudeStr = map.get(LATITUDE);
@@ -642,10 +683,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                                                                                     Log.d(TAG, "onDataChange-markerName = " + markerName.toString());
                                                                                     dict.put(key, i);
                                                                                     //Log.d(TAG, "dict = " + dict);
-                                                                                    Log.d(TAG, "onDataChange-key = " + key);
-                                                                                    Log.d(TAG, "onDataChange-i = " + i);
-                                                                                    Log.d(TAG, "onDataChange-dict = " + dict.toString());
-                                                                                    Log.d(TAG, "onDataChange-dict.get(key)  = " + dict.get(key));
+//                                                                                    Log.d(TAG, "onDataChange-key = " + key);
+//                                                                                    Log.d(TAG, "onDataChange-i = " + i);
+//                                                                                    Log.d(TAG, "onDataChange-dict = " + dict.toString());
+//                                                                                    Log.d(TAG, "onDataChange-dict.get(key)  = " + dict.get(key));
                                                                             }
                                                                     }
 
