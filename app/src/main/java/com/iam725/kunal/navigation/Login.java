@@ -1,19 +1,24 @@
 package com.iam725.kunal.navigation;
 
 import android.app.ProgressDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Color;
+import android.graphics.Paint;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.RequiresApi;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.Toast;
 
 import com.google.android.gms.tasks.OnCompleteListener;
@@ -30,6 +35,7 @@ public class Login extends AppCompatActivity {
         private EditText passwordEditText;
         private String email;
         ProgressDialog progressDialog;
+        private ImageButton IoginButton;
         //private TextView mStatusTextView;
         //private TextView mDetailTextView;
 
@@ -52,11 +58,57 @@ public class Login extends AppCompatActivity {
                 mAuth = FirebaseAuth.getInstance();
                 emailEditText = (EditText) findViewById(R.id.input_email);
                 passwordEditText = (EditText) findViewById(R.id.input_password);
-                Button loginButton = (Button) findViewById(R.id.btn_login);
+                IoginButton = (ImageButton) findViewById(R.id.btn_login);
+                final Button forgotPassword = (Button) findViewById (R.id.forgot_password);
+                forgotPassword.setPaintFlags(forgotPassword.getPaintFlags() | Paint.UNDERLINE_TEXT_FLAG);
 
-                loginButton.setOnClickListener(new View.OnClickListener() {
+                forgotPassword.setOnClickListener(new View.OnClickListener() {
                         @Override
                         public void onClick(View v) {
+
+                                AlertDialog.Builder builder = new AlertDialog.Builder(Login.this);
+                                final EditText input = new EditText(Login.this);
+                                input.setHint("Enter email address");
+                                final float scale = getResources().getDisplayMetrics().density;
+                                final float dps = 13;
+                                int pixels = (int) (dps * scale + 0.5f);                //converting 40 dp into pixels
+                                input.setPadding(pixels, pixels, pixels, pixels);
+                                input.setHintTextColor(Color.parseColor("#777777"));
+                                builder.setView(input);
+                                builder.setTitle("Forgot Password");
+                                builder.setMessage("A password reset mail will be sent to this email id");
+                                builder.setIcon(R.drawable.ic_mail_black_24dp);
+                                builder.setPositiveButton("Send", new DialogInterface.OnClickListener() {
+                                        @Override
+                                        public void onClick(DialogInterface dialog, int which) {
+                                                if (!input.getText().toString().isEmpty()) {
+                                                        FirebaseAuth.getInstance().sendPasswordResetEmail(input.getText().toString())
+                                                                .addOnCompleteListener(new OnCompleteListener<Void>() {
+                                                                        @Override
+                                                                        public void onComplete(@NonNull Task<Void> task) {
+                                                                                if (task.isSuccessful()) {
+                                                                                        Log.d(TAG, "Email sent.");
+                                                                                        Toast.makeText(Login.this, "Email Sent to " + input.getText().toString(), Toast.LENGTH_SHORT).show();
+                                                                                }
+                                                                        }
+                                                                });
+                                                }
+                                                else {
+                                                        Toast.makeText(Login.this, "Please enter the email id", Toast.LENGTH_SHORT).show();
+                                                }
+                                        }
+                                });
+
+                                builder.setNegativeButton("Cancel", null).show();
+                        }
+                });
+
+                IoginButton.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+                                        IoginButton.setBackground(getResources().getDrawable(R.drawable.login_pressed_white));
+                                }
                                 signIn ();
                         }
                 });
@@ -95,6 +147,9 @@ public class Login extends AppCompatActivity {
 
                 Log.d(TAG, "signIn:" + email);
                 if (!validateForm()) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+                                IoginButton.setBackground(getResources().getDrawable(R.drawable.custom_button_event));
+                        }
                         return;
                 }
                 Log.d(TAG, "EMAIL : " + email);
@@ -149,6 +204,11 @@ public class Login extends AppCompatActivity {
                                         } else {
                                                 // If sign in fails, display a message to the user.
                                                 Log.w(TAG, "signInWithEmail:failure", task.getException());
+//                                                IoginButton.setImageResource(R.drawable.login_default);
+                                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+                                                        IoginButton.setBackground(getResources().getDrawable(R.drawable.custom_button_event));
+                                                }
+                                                IoginButton.setClickable(true);
                                                 Toast.makeText(Login.this, "Authentication failed.",
                                                         Toast.LENGTH_SHORT).show();
                                         }

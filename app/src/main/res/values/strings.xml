@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Navigation</string>
+    <string name="app_name">CatchApp</string>
     <string name="Email">Email</string>
     <string name="Password">Password</string>
     <string name="Login">Login</string>
@@ -16,4 +16,6 @@
     <string name="others">Others</string>
     <string name="logOut">Log Out</string>
     <string name="refresh">Refresh</string>
+    <string name="forgot_password">Forgot Password</string>
+    <string name="reset_password">Reset Password</string>
 </resources>

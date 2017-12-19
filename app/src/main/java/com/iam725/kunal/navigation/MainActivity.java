@@ -47,7 +47,9 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -121,6 +123,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         private int noOfChildren = 0;
         private Marker myLocationMarker;
         private LatLng pos;
+        private String userEmail = null;
 
         protected void createLocationRequest() {
                 mLocationRequest = new LocationRequest();
@@ -220,6 +223,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                                                 userDatabase.child(LATITUDE).setValue(lat);
                                                 userDatabase.child(LONGITUDE).setValue(lng);
                                                 Log.d(TAG, "userDatabase@ =  " + userDatabase.toString());
+                                                Log.d(TAG, "lat = " + lat + ", lng = " + lng);
                                         }
 //                                        showMyLocationMarker();
                                 }
@@ -406,9 +410,40 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         else if (id == R.id.action_settings) {
             return true;
         }
+        else if (id == R.id.reset) {
+                resetPassword();
+
+        }
 
         return super.onOptionsItemSelected(item);
     }
+
+        private void resetPassword() {
+
+                new AlertDialog.Builder(this)
+                        .setIcon(android.R.drawable.ic_dialog_alert)
+                        .setTitle("Reset Password")
+                        .setMessage("Are you sure you want to reset your password ?")
+                        .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                        FirebaseAuth.getInstance().sendPasswordResetEmail(userEmail)
+                                                .addOnCompleteListener(new OnCompleteListener<Void>() {
+                                                        @Override
+                                                        public void onComplete(@NonNull Task<Void> task) {
+                                                                if (task.isSuccessful()) {
+                                                                        Log.d(TAG, "Email sent.");
+                                                                        Toast.makeText(MainActivity.this, "Email Sent to " + userEmail, Toast.LENGTH_SHORT).show();
+                                                                }
+                                                        }
+                                                });
+                                }
+                        })
+                        .setNegativeButton("No", null)
+                        .show();
+
+        }
+
 
         private void refresh() {
 
@@ -494,6 +529,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
             SharedPreferences loginPrefs = getSharedPreferences("contact", MODE_PRIVATE);
             String userId = loginPrefs.getString("email", "User id");
+            userEmail = userId;
             Log.e(TAG, "userId = "+userId);
             NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
             View headerView = navigationView.getHeaderView(0);
@@ -551,7 +587,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     @Override
     public void onConnectionSuspended(int i) {
-
+        Log.e(TAG, "onConnectedSuspended");
     }
 
     private boolean isGooglePlayServicesAvailable() {
@@ -612,6 +648,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             Log.d(TAG, "mDatabase = " + mDatabase.toString());
             Log.d(TAG, "busNumber  =  " + busNumber);
             Log.d(TAG, "mDatabase.child(VEHICLE) = " + mDatabase.child(VEHICLE).toString());
+            if (busNumber == null)      return;
+            if (!busNumber.contains("bus"))      return;
 
             try {
                     Log.d(TAG, "mDatabase.child(VEHICLE).child(busNumber) = " + mDatabase.child(VEHICLE).child(busNumber).toString());
