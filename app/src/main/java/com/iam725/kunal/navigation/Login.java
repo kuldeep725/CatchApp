@@ -166,7 +166,6 @@ public class Login extends AppCompatActivity {
                                                 // Sign in success, update UI with the signed-in user's information
                                                 Log.d(TAG, "signInWithEmail:success");
                                                 //FirebaseUser user = mAuth.getCurrentUser();
-                                                Intent i = new Intent(Login.this, MainActivity.class);
 //                                                SharedPreferences sp = getSharedPreferences("Login", MODE_PRIVATE);
 //                                                SharedPreferences.Editor Ed = sp.edit();
 //                                                Ed.putString("Unm",Value );
@@ -199,6 +198,7 @@ public class Login extends AppCompatActivity {
                                                 }).start();
 //                                                ProgressDialogForLoggingIn dialog = new ProgressDialogForLoggingIn(Login.this);
 //                                                dialog.execute();
+                                                Intent i = new Intent(Login.this, MainActivity.class);
                                                 startActivity(i);
                                                 finish();
                                         } else {
