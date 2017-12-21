@@ -244,6 +244,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         @Override
         public void onMapReady(GoogleMap googleMap) {
+                requestPermissions();
                 mMap = googleMap;
                 // Show Zoom buttons
                 mMap.getUiSettings().setZoomControlsEnabled(false);
@@ -535,6 +536,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             View headerView = navigationView.getHeaderView(0);
             TextView tv = (TextView) headerView.findViewById(R.id.user_id);
             tv.setText(userId);
+            startLocationUpdates();
     }
 
 
@@ -648,8 +650,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             Log.d(TAG, "mDatabase = " + mDatabase.toString());
             Log.d(TAG, "busNumber  =  " + busNumber);
             Log.d(TAG, "mDatabase.child(VEHICLE) = " + mDatabase.child(VEHICLE).toString());
-            if (busNumber == null)      return;
-            if (!busNumber.contains("bus"))      return;
+            if (busNumber == null)    {
+                    Log.e(TAG, "busNumber is null");
+                    return;
+            }
 
             try {
                     Log.d(TAG, "mDatabase.child(VEHICLE).child(busNumber) = " + mDatabase.child(VEHICLE).child(busNumber).toString());
