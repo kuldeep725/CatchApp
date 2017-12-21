@@ -168,36 +168,60 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 FirebaseApp.initializeApp(this);
                 mDatabase = FirebaseDatabase.getInstance().getReference();
 
-                mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+                if (checkPermissions()) {
+                        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
 
-                createLocationRequest();
+                        createLocationRequest();
 
-                //show error dialog if GoolglePlayServices not available
+                        //show error dialog if GoolglePlayServices not available
         /*if (!isGooglePlayServicesAvailable()) {
             finish();
         }*/
 
-                mGoogleApiClient = new GoogleApiClient.Builder(this)
-                        .addApi(LocationServices.API)
-                        .addConnectionCallbacks(this)
-                        .addOnConnectionFailedListener(this)
-                        .build();
+                        mGoogleApiClient = new GoogleApiClient.Builder(this)
+                                .addApi(LocationServices.API)
+                                .addConnectionCallbacks(this)
+                                .addOnConnectionFailedListener(this)
+                                .build();
 
-                if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                        return;
-                }
+                        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                                return;
+                        }
 
-                mFusedLocationClient.getLastLocation()
-                        .addOnSuccessListener(this, new OnSuccessListener<Location>() {
+                        mFusedLocationClient.getLastLocation()
+                                .addOnSuccessListener(this, new OnSuccessListener<Location>() {
+                                        @Override
+                                        public void onSuccess(Location location) {
+                                                // Got last known location. In some rare situations this can be null.
+                                                if (location != null) {
+                                                        mCurrentLocation = location;
+                                                        onMapReady(mMap);
+                                                }
+                                        }
+                                });
+                        mLocationCallback = new LocationCallback() {
                                 @Override
-                                public void onSuccess(Location location) {
-                                        // Got last known location. In some rare situations this can be null.
-                                        if (location != null) {
+                                public void onLocationResult(LocationResult locationResult) {
+                                        for (Location location : locationResult.getLocations()) {
                                                 mCurrentLocation = location;
-                                                onMapReady(mMap);
+                                                if (null != mCurrentLocation) {
+                                                        String lat = String.valueOf(mCurrentLocation.getLatitude());
+                                                        String lng = String.valueOf(mCurrentLocation.getLongitude());
+                                                        mDatabase = FirebaseDatabase.getInstance().getReference();
+
+                                                        DatabaseReference userDatabase = mDatabase.child(USER).child(busNumber).child("location");
+                                                        userDatabase.child(LATITUDE).setValue(lat);
+                                                        userDatabase.child(LONGITUDE).setValue(lng);
+                                                        Log.d(TAG, "userDatabase@ =  " + userDatabase.toString());
+                                                        Log.d(TAG, "lat = " + lat + ", lng = " + lng);
+                                                }
+//                                        showMyLocationMarker();
                                         }
                                 }
-                        });
+
+                        };
+
+                }
 
                 FirebaseAuth mAuth = FirebaseAuth.getInstance();
                 FirebaseUser currentUser = mAuth.getCurrentUser();
@@ -209,27 +233,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         finish();
                 }
 
-                mLocationCallback = new LocationCallback() {
-                        @Override
-                        public void onLocationResult(LocationResult locationResult) {
-                                for (Location location : locationResult.getLocations()) {
-                                        mCurrentLocation = location;
-                                        if (null != mCurrentLocation) {
-                                                String lat = String.valueOf(mCurrentLocation.getLatitude());
-                                                String lng = String.valueOf(mCurrentLocation.getLongitude());
-                                                mDatabase = FirebaseDatabase.getInstance().getReference();
-
-                                                DatabaseReference userDatabase = mDatabase.child(USER).child(busNumber).child("location");
-                                                userDatabase.child(LATITUDE).setValue(lat);
-                                                userDatabase.child(LONGITUDE).setValue(lng);
-                                                Log.d(TAG, "userDatabase@ =  " + userDatabase.toString());
-                                                Log.d(TAG, "lat = " + lat + ", lng = " + lng);
-                                        }
-//                                        showMyLocationMarker();
-                                }
-                        }
-
-                };
         }
 
         @Override
@@ -255,7 +258,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 //Turns on 3D buildings
                 mMap.setBuildingsEnabled(true);
                 mMap.getUiSettings().setMapToolbarEnabled(false);
-                mMap.setMyLocationEnabled(true);
+                if (checkPermissions()){
+                        mMap.setMyLocationEnabled(true);
+                }
+
                 // Add a marker in Sydney and move the camera
                 /*LatLng sydney = new LatLng(-34, 151);
                 mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
@@ -528,7 +534,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                             }
                             Log.d(TAG, "busNumberDebug = " + busNumber);
                             busNumber = "b" + busNumber;
-                            showMyLocationMarker();
                     }
             }
             Log.e(TAG, "userId = "+userId);
@@ -536,7 +541,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             View headerView = navigationView.getHeaderView(0);
             TextView tv = (TextView) headerView.findViewById(R.id.user_id);
             tv.setText(userId);
-            startLocationUpdates();
+            if (checkPermissions()) {
+                    startLocationUpdates();
+            }
     }
 
 
@@ -610,7 +617,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     protected void onPause() {
         super.onPause();
-        stopLocationUpdates();
+            if (checkPermissions())
+                stopLocationUpdates();
     }
 
 

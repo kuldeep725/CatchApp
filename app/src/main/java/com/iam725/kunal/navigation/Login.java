@@ -154,6 +154,9 @@ public class Login extends AppCompatActivity {
                 Log.d(TAG, "PASSWORD : " + password);
                 if (!email.contains("bus")) {
                         Toast.makeText(this, "You are not in the list", Toast.LENGTH_SHORT).show();
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+                                IoginButton.setBackground(getResources().getDrawable(R.drawable.custom_button_event));
+                        }
                         return;
                 }
                 //showProgressDialog();
