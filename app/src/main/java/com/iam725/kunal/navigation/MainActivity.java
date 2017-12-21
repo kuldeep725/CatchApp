@@ -293,53 +293,39 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                         }
                 });
-                String str = "My Location";
-                if (null != mCurrentLocation) {
 
-                        SharedPreferences myPrefs = this.getSharedPreferences("contact", MODE_PRIVATE);
-                        busNumber = myPrefs.getString("email", "stupid");
-                        if (!busNumber.equals("stupid")) {
-                                if (!busNumber.contains("bus")) {
-
-                                        Toast.makeText(this, "You are not in the list", Toast.LENGTH_SHORT).show();
-                                        Intent i = new Intent(MainActivity.this, Login.class);
-                                        FirebaseAuth.getInstance().signOut();
-
-                                        progressDialog.setTitle("Catch App");
-                                        progressDialog.setMessage("Logging Out...");
-                                        progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
-                                        progressDialog.show();
-                                        progressDialog.setCancelable(true);
-                                        new Thread(new Runnable() {
-                                                public void run() {
-                                                        try {
-                                                                Thread.sleep(5000);
-                                                        } catch (Exception e) {
-                                                                e.printStackTrace();
-                                                        }
-                                                        if (progressDialog != null) {
-                                                                progressDialog.dismiss();
-                                                                progressDialog = null;
-                                                        }
-
-                                                }
-                                        }).start();
-
-                                        startActivity(i);
-                                        finish();
-
-                                }
-                                busNumber = busNumber.split("@")[0];
-                                Log.d(TAG, "split(1) =  " + busNumber);
-                                if (busNumber.contains("bus")) {
-                                        busNumber = busNumber.split("bus")[1];
-                                }
-                                Log.d(TAG, "busNumberDebug = " + busNumber);
-                                busNumber = "b" + busNumber;
-
-                        }
-                }
-                showMyLocationMarker();
+//                        if (!busNumber.equals("stupid")) {
+//                                if (!busNumber.contains("bus")) {
+//
+//                                        Toast.makeText(this, "You are not in the list", Toast.LENGTH_SHORT).show();
+//                                        Intent i = new Intent(MainActivity.this, Login.class);
+//                                        FirebaseAuth.getInstance().signOut();
+//
+//                                        progressDialog.setTitle("Catch App");
+//                                        progressDialog.setMessage("Logging Out...");
+//                                        progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+//                                        progressDialog.show();
+//                                        progressDialog.setCancelable(true);
+//                                        new Thread(new Runnable() {
+//                                                public void run() {
+//                                                        try {
+//                                                                Thread.sleep(5000);
+//                                                        } catch (Exception e) {
+//                                                                e.printStackTrace();
+//                                                        }
+//                                                        if (progressDialog != null) {
+//                                                                progressDialog.dismiss();
+//                                                                progressDialog = null;
+//                                                        }
+//
+//                                                }
+//                                        }).start();
+//
+//                                        startActivity(i);
+//                                        finish();
+//
+//                                }
+                        showMyLocationMarker();
 
         }
 
@@ -528,9 +514,23 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (!checkPermissions()) {
             requestPermissions();
         }
+
             SharedPreferences loginPrefs = getSharedPreferences("contact", MODE_PRIVATE);
-            String userId = loginPrefs.getString("email", "User id");
+            String userId = loginPrefs.getString("email", "UserId");
             userEmail = userId;
+            busNumber = userId;
+            if (!busNumber.equals("UserId")) {
+                    if (busNumber.contains("bus")) {
+                            busNumber = busNumber.split("@")[0];
+                            Log.d(TAG, "split(1) =  " + busNumber);
+                            if (busNumber.contains("bus")) {
+                                    busNumber = busNumber.split("bus")[1];
+                            }
+                            Log.d(TAG, "busNumberDebug = " + busNumber);
+                            busNumber = "b" + busNumber;
+                            showMyLocationMarker();
+                    }
+            }
             Log.e(TAG, "userId = "+userId);
             NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
             View headerView = navigationView.getHeaderView(0);

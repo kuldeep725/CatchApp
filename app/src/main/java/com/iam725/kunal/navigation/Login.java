@@ -152,7 +152,10 @@ public class Login extends AppCompatActivity {
                 }
                 Log.d(TAG, "EMAIL : " + email);
                 Log.d(TAG, "PASSWORD : " + password);
-
+                if (!email.contains("bus")) {
+                        Toast.makeText(this, "You are not in the list", Toast.LENGTH_SHORT).show();
+                        return;
+                }
                 //showProgressDialog();
 
                 // [START sign_in_with_email]
