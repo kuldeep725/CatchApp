@@ -1,13 +1,16 @@
 package com.iam725.kunal.navigation;
 
 import android.annotation.SuppressLint;
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.location.Address;
+import android.graphics.BitmapFactory;
 import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationManager;
@@ -16,6 +19,7 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.design.widget.NavigationView;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.NotificationCompat;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
@@ -76,6 +80,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         private static final String TAG = "VehicleMapsActivity";
         private static final long INTERVAL = 1000 * 10;             //time in milliseconds
         private static final long FASTEST_INTERVAL = 1000 * 5;
+        private static final long INTERMEDIATE_INTERVAL = 1000*8;
         private static final String REQUESTING_LOCATION_UPDATES_KEY = "requesting-location-updates";
         private final String USER = "user";
         private final String LATITUDE = "latitude";
@@ -124,10 +129,18 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         private Marker myLocationMarker;
         private LatLng pos;
         private String userEmail = null;
+        private String name = "Location";
+        private NotificationCompat.Builder builder;
+        private int notificationId=1;
+        private String status = "0";            //status = 1 means notification off
+        private ChildEventListener mRefListener;
+        private DatabaseReference mRef;
+        private boolean flagKeyRef = false;
+        //status = 0 means notification on
 
         protected void createLocationRequest() {
                 mLocationRequest = new LocationRequest();
-                mLocationRequest.setInterval(INTERVAL);
+                mLocationRequest.setInterval(INTERMEDIATE_INTERVAL);
                 mLocationRequest.setFastestInterval(FASTEST_INTERVAL);
                 mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
         }
@@ -167,6 +180,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 mRequestingLocationUpdates = false;
                 FirebaseApp.initializeApp(this);
                 mDatabase = FirebaseDatabase.getInstance().getReference();
+
+//                NotificationCompat.Builder builder = new NotificationCompat.Builder(MainActivity.this);
+//                builder.setLargeIcon(BitmapFactory.decodeResource(getResources(), R.drawable.gogo));
+//                builder.setContentTitle("Pick up Request");
+//                builder.setSmallIcon(R.drawable.cast_ic_notification_small_icon);
+//                NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+//                notificationManager.notify(1, builder.build());
 
                 if (checkPermissions()) {
                         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
@@ -212,10 +232,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                                                         DatabaseReference userDatabase = mDatabase.child(USER).child(busNumber).child("location");
                                                         userDatabase.child(LATITUDE).setValue(lat);
                                                         userDatabase.child(LONGITUDE).setValue(lng);
-                                                        Log.d(TAG, "userDatabase@ =  " + userDatabase.toString());
-                                                        Log.d(TAG, "lat = " + lat + ", lng = " + lng);
+//                                                        Log.d(TAG, "userDatabase@ =  " + userDatabase.toString());
+//                                                        Log.d(TAG, "lat = " + lat + ", lng = " + lng);
                                                 }
-//                                        showMyLocationMarker();
+//                                                showMyLocationMarker();
                                         }
                                 }
 
@@ -341,7 +361,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         String lat = String.valueOf(mCurrentLocation.getLatitude());
                         String lng = String.valueOf(mCurrentLocation.getLongitude());
                         mDatabase = FirebaseDatabase.getInstance().getReference();
-
+                        if (busNumber == null)          return;
                         DatabaseReference userDatabase = mDatabase.child(USER).child(busNumber).child("location");
                         userDatabase.child(LATITUDE).setValue(lat);
                         userDatabase.child(LONGITUDE).setValue(lng);
@@ -364,16 +384,17 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                                 Log.e(TAG, "GEOCODER DIDN'T WORK.");
                         }
 
-                        if (myLocationMarker != null) {
-                                myLocationMarker.remove();
-                        }
-                        myLocationMarker = mMap.addMarker(new MarkerOptions()
-                                .position(new LatLng(mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude()))
-                                .title(str));
-                        myLocationMarker.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.end_green));
-                        Log.e(TAG, "myLocationMarker = " + myLocationMarker);
+//                        if (myLocationMarker != null) {
+//                                myLocationMarker.remove();
+//                        }
+//                        myLocationMarker = mMap.addMarker(new MarkerOptions()
+//                                .position(new LatLng(mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude()))
+//                                .title(str));
+//                        myLocationMarker.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.end_green));
+//                        Log.e(TAG, "myLocationMarker = " + myLocationMarker);
+
                         mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(
-                                new LatLng(mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude()), 14.0f));
+                                new LatLng(mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude()), 16.0f));
 //                                                mMap.animateCamera(CameraUpdateFactory.newLatLng(
 //                                new LatLng(mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude())));
 
@@ -471,6 +492,22 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                             .setNegativeButton("No", null)
                             .show();
                 break;
+                case R.id.remove_markers :
+                        new AlertDialog.Builder(this)
+                                .setIcon(android.R.drawable.ic_dialog_alert)
+                                .setTitle("Remove all markers")
+                                .setMessage("Are you sure you want to remove all markers ?")
+                                .setPositiveButton("Yes", new DialogInterface.OnClickListener()
+                                {
+                                        @Override
+                                        public void onClick(DialogInterface dialog, int which) {
+                                                removeAllMarkers();
+                                        }
+
+                                })
+                                .setNegativeButton("No", null)
+                                .show();
+                        break;
             case R.id.about :
                 break;
             case R.id.help :
@@ -497,7 +534,39 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         return true;
     }
 
-    @Override
+        private void removeAllMarkers() {
+
+                Log.d(TAG, "removeAllMarkers fired...");
+                DatabaseReference dr = FirebaseDatabase.getInstance().getReference();
+                final DatabaseReference vehicleDatabase = dr.child(VEHICLE);
+                vehicleDatabase.addListenerForSingleValueEvent(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(DataSnapshot dataSnapshot) {
+                                for (DataSnapshot postDataSnapshot : dataSnapshot.getChildren()) {
+                                        String keyBus = postDataSnapshot.getKey();              //keyBus = b1,b2, b3, b4,b5.....
+                                        Log.e(TAG, "keyBus = " + keyBus);
+                                        for (DataSnapshot childSnapshot : postDataSnapshot.getChildren()) {
+                                                String keyOfUser = childSnapshot.getKey();         //keyOfUser = temp, different keys of different users....
+                                                Log.e(TAG, "keyOfUser = " + keyOfUser);
+                                                if (!childSnapshot.getKey().equals("temp")) {
+                                                        DatabaseReference childDR = vehicleDatabase.child(keyBus).child(keyOfUser);
+                                                        childDR.removeValue();
+                                                        Log.e(TAG, "childDR = " + childDR.toString());
+                                                }
+                                        }
+                                }
+                                refresh();
+                        }
+
+                        @Override
+                        public void onCancelled(DatabaseError databaseError) {
+
+                        }
+                });
+
+        }
+
+        @Override
     public void onLocationChanged(Location location) {
         Log.d(TAG, "Firing onLocationChanged..............................................");
         mLocationCallback = new LocationCallback() {
@@ -531,6 +600,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                             Log.d(TAG, "split(1) =  " + busNumber);
                             if (busNumber.contains("bus")) {
                                     busNumber = busNumber.split("bus")[1];
+                                    if(busNumber.charAt(0) == '0') {
+                                            busNumber = busNumber.split("0")[1];
+                                    }
                             }
                             Log.d(TAG, "busNumberDebug = " + busNumber);
                             busNumber = "b" + busNumber;
@@ -543,11 +615,237 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             tv.setText(userId);
             if (checkPermissions()) {
                     startLocationUpdates();
+                    updateMarker();
             }
+
     }
 
+        private void updateMarker() {
 
-    private boolean checkPermissions() {
+                mDatabase = FirebaseDatabase.getInstance().getReference();
+                Log.d(TAG, "mDatabase = " + mDatabase.toString());
+                Log.d(TAG, "busNumber  =  " + busNumber);
+                Log.d(TAG, "mDatabase.child(VEHICLE) = " + mDatabase.child(VEHICLE).toString());
+                if (busNumber == null)    {
+                        Log.e(TAG, "busNumber is null");
+                        return;
+                }
+                builder = new NotificationCompat.Builder(MainActivity.this);
+                builder.setLargeIcon(BitmapFactory.decodeResource(getResources(), R.drawable.gogo_blackblue));
+                builder.setSmallIcon(android.R.drawable.ic_notification_overlay);
+                builder.setDefaults(Notification.DEFAULT_LIGHTS | Notification.DEFAULT_SOUND);
+
+                try {
+                        Log.d(TAG, "mDatabase.child(VEHICLE).child(busNumber) = " + mDatabase.child(VEHICLE).child(busNumber).toString());
+                        mRef = mDatabase.child(VEHICLE).child(busNumber);
+                        Log.d(TAG, "mRef = " + mRef.toString());
+                        /*mRefListener = */mRef.addChildEventListener(new ChildEventListener() {
+                                @Override
+                                public void onChildAdded(DataSnapshot dataSnapshot, String s) {
+
+                                        Log.d(TAG, "busNumber1 = " + busNumber);
+                                        Log.d(TAG, "string s = " + s);
+                                        Log.d(TAG, "dataSnapshot onChildAdded : " + dataSnapshot);
+
+//                                        Log.d(TAG, "map = " + map);
+                                        if (!dataSnapshot.getKey().equals("temp")) {
+                                                name = dataSnapshot.getKey();
+                                                Log.d(TAG, "name = " + name);
+//                                            key = dataSnapshot.getKey();
+//                                            Log.d(TAG, "key = " + key);
+
+                                                if (!name.equals("temp")) {
+
+                                                        GenericTypeIndicator<String> genericTypeIndicatorStatus = new GenericTypeIndicator<String>() {
+                                                        };
+                                                        Log.d(TAG, "dataSnapshot.child(name) = " + dataSnapshot.child(name));
+                                                        status = "0";
+                                                        for (DataSnapshot dss : dataSnapshot.getChildren()) {
+                                                                Log.d(TAG, "dss.getKey() = " + dss.getKey());
+                                                                if (dss.getKey().equals("status")) {
+                                                                        status = dss.getValue(genericTypeIndicatorStatus);
+                                                                }
+                                                        }
+                                                        Log.d(TAG, "status = " + status);
+//                                                    Log.d(TAG, "statusMap = "+statusMap);
+//                                                    String status = null;
+//                                                    Log.d(TAG, "statusMap = " + statusMap);
+//                                                    if (statusMap != null) {
+//                                                            status = statusMap.get("status");
+//                                                            Log.d(TAG, "status = "+status);
+//                                                    }
+//                                                    final String[] finalStatus = {status};
+                                                        DatabaseReference keyRef = mRef.child(name);
+                                                        Log.d(TAG, "keyRef = " + keyRef);
+
+                                                        keyRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                                                                @Override
+                                                                public void onDataChange(DataSnapshot p_dataSnapshot) {
+//                                                                            String str = "Location";
+                                                                                if(flagKeyRef && p_dataSnapshot.getChildrenCount() == 1) {
+
+                                                                                        builder.setContentTitle("Pick up Request");
+                                                                                        builder.setContentText("From : " + name);
+                                                                                        Intent i = new Intent(MainActivity.this, MainActivity.class);
+                                                                                        PendingIntent pi = PendingIntent.getActivity(MainActivity.this, 0, i, 0);
+                                                                                        builder.setContentIntent(pi);
+                                                                                        NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+                                                                                        notificationManager.notify(notificationId++, builder.build());
+        //                                                                                mRef.child(name).child("status").setValue("1");
+        //                                                                                                                            finalStatus[0] = "1";
+        //                                                                                                                            flag[0] = true;
+        //                                                                                status = "1";
+        //                                                                                Log.d(TAG, "NOW status = "+ status);
+        //                                                                                DatabaseReference keyRef_d = mRef.child(name);
+        //                                                                                keyRef_d.child("status").setValue("1");
+                                                                                }
+                                                                                for (DataSnapshot dataSnapshot : p_dataSnapshot.getChildren()) {
+
+                                                                                Log.d(TAG, "dataSnapshot = "+ dataSnapshot.toString());
+                                                                                Log.d(TAG, "dataSnapshot.getKey() = "+ dataSnapshot.getKey());
+                                                                                if (!dataSnapshot.getKey().equals("status")) {
+                                                                                        key = dataSnapshot.getKey();
+                                                                                        Log.d(TAG, "key = " + key);
+                                                                                        final DatabaseReference locationRef = mRef.child(name).child(key).child("LOCATION");
+                                                                                        Log.d(TAG, "locationRef =  " + locationRef.toString());
+                                                                                        GenericTypeIndicator<Map<String, String>> genericTypeIndicator = new GenericTypeIndicator<Map<String, String>>() {
+                                                                                        };
+                                                                                        Map<String, String> map = dataSnapshot.child("LOCATION").getValue(genericTypeIndicator);
+                                                                /*GenericTypeIndicator<Map<String, Map<String, String>>> genericTypeIndicator = new GenericTypeIndicator<Map<String, Map<String, String>>>() {
+                                                                };
+                                                                Map<String, Map<String, String>> map = dataSnapshot.getValue(genericTypeIndicator);*/
+
+                                                                                        if (map != null) {
+                                                                                                Log.d(TAG, "onDataChange-map in onValueEventListener =  " + map);
+                                                                                                String latitudeStr = map.get(LATITUDE);
+                                                                                                String longitudeStr = map.get(LONGITUDE);
+//                                                                            String status = map.get("status");
+
+                                                                                                Log.d(TAG, "onDataChange-Latitude = " + latitudeStr);
+                                                                                                Log.d(TAG, "onDataChange-Longitude = " + longitudeStr);
+                                                                                                if (latitudeStr == null || longitudeStr == null)
+                                                                                                        return;
+                                                                                                double latitude = Double.parseDouble(latitudeStr);
+                                                                                                double longitude = Double.parseDouble(longitudeStr);
+//                                                                            LatLng latLng = new LatLng(latitude, longitude);
+
+//                                                                                                    if (null != mCurrentLocation) {
+
+//                                                                                                            Geocoder geocoder = new Geocoder(getApplicationContext());
+//
+//                                                                                                            try {
+//                                                                                                                    List<Address> addressList = geocoder.getFromLocation(latitude, longitude, 1);
+//                                                                                                                    str = "";
+//                                                                                                                    if (addressList.get(0).getSubLocality() != null) {
+//                                                                                                                            str += addressList.get(0).getSubLocality() + ",";
+//                                                                                                                    }
+//                                                                                                                    str += addressList.get(0).getLocality();
+////                                                                                            str += addressList.get(0).getCountryName();
+//                                                                                                                    Log.d(TAG, "onDataChange-GEOCODER STARTED.");
+//                                                                                                            } catch (IOException e) {
+//                                                                                                                    e.printStackTrace();
+//                                                                                                                    Log.e(TAG, "onDataChange-GEOCODER DIDN'T WORK.");
+//                                                                                                            }
+
+                                                                                                i = (int) dataSnapshot.getChildrenCount() - 1;
+                                                                                                markerName = mMap.addMarker(new MarkerOptions()
+                                                                                                        .position(new LatLng(latitude, longitude))
+                                                                                                        .title(name));
+//                                                                                    markerName.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.ic_person_pin_circle_black_24dp));
+                                                                                                markerName.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.ic_person_pin_circle_black_24dp));
+                                                                                                markers.put(i, markerName);
+                                                                                                mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(latitude, longitude), 12.0f));
+                                                                                                markerset.add(markerName);
+
+                                                                                                Log.d(TAG, "onDataChange-markerName = " + markerName.toString());
+                                                                                                dict.put(key, i);
+
+                                                                                        }
+                                                                                }
+//                                                                                else {
+//                                                                                        Log.e(TAG, "status = " + status);
+////                                                                                                                    Log.e(TAG, "flag[0] = "+flag[0] +", finalStatus[0] = "+ finalStatus[0]);
+//                                                                                        if (status.equals("0")) {
+//                                                                                                Log.e(TAG, "Notification Chamber");
+//                                                                                                builder.setContentTitle("Pick up Request");
+//                                                                                                builder.setContentText("From : " + name);
+//                                                                                                Intent i = new Intent(MainActivity.this, MainActivity.class);
+//                                                                                                PendingIntent pi = PendingIntent.getActivity(MainActivity.this, 0, i, 0);
+//                                                                                                builder.setContentIntent(pi);
+//                                                                                                NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+//                                                                                                notificationManager.notify(notificationId++, builder.build());
+//                                                                                                mRef.child(name).child("status").setValue("1");
+////                                                                                                                            finalStatus[0] = "1";
+////                                                                                                                            flag[0] = true;
+//                                                                                                status = "1";
+//                                                                                                Log.d(TAG, "NOW status = "+ status);
+//                                                                                                DatabaseReference keyRef_d = mRef.child(name);
+//                                                                                                keyRef_d.child("status").setValue("1");
+//                                                                                        }
+//                                                                                }
+                                                                        }
+                                                                }
+
+                                                                @Override
+                                                                public void onCancelled(DatabaseError databaseError) {
+
+                                                                }
+                                                        });
+                                                }
+                                        }
+                                }
+
+                                @Override
+                                public void onChildChanged(DataSnapshot dataSnapshot, String s) {
+
+                                }
+                                //
+                                @Override
+                                public void onChildRemoved(DataSnapshot dataSnapshot) {
+//                    int userToDelete = dict.get(dataSnapshot.getKey());
+//                    Log.d(TAG, "onChildRemoved-userToDelete = " + userToDelete);
+//                    Marker markerName = markers.get(userToDelete);
+//                    Log.d(TAG, "onChildRemoved-markerName BEFORE DELETION = " + markerName);
+//                    Log.d(TAG, "onChildRemoved-markerName.toString() BEFORE DELETION = " + markerName.toString());
+//
+//                    if (markerName != null) {
+//                        markerName.remove();
+//                        assert  markerName == null;
+//                        //Log.d(TAG, "onChildRemoved-markerName AFTER DELETION = " + markerName);
+//                        //Log.d(TAG, "onChildRemoved-markerName.toString() AFTER DELETION = " + markerName.toString());
+//                        i = (int) dataSnapshot.getChildrenCount() - 1;
+//                    }
+                                        Log.d(TAG, "@REMOVE dataSnapshot = " + dataSnapshot.toString());
+                                        Log.d(TAG, "@REMOVE dataSnapshot.getKey() = "+ dataSnapshot.getKey());
+
+
+                                        assert mMap != null;
+                                        mMap.clear();
+                                        onMapReady(mMap);
+//                                            startLocationUpdates();
+//                                            mRef.removeEventListener(mRefListener);
+//                                        updateMarker();
+
+                                }
+
+                                @Override
+                                public void onChildMoved(DataSnapshot dataSnapshot, String s) {
+
+                                }
+
+                                @Override
+                                public void onCancelled(DatabaseError databaseError) {
+
+                                }
+                        });
+                } catch (Exception e) {
+                        Log.e(TAG, "ERROR : " + e.toString());
+                }
+
+        }
+
+
+        private boolean checkPermissions() {
         int permissionState = ActivityCompat.checkSelfPermission(this,
                 android.Manifest.permission.ACCESS_COARSE_LOCATION);
         return permissionState == PackageManager.PERMISSION_GRANTED;
@@ -617,8 +915,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     protected void onPause() {
         super.onPause();
-            if (checkPermissions())
-                stopLocationUpdates();
+            /** Not stopping location updates so that app will update
+             *  the location even when app is not closed
+             */
+//            if (checkPermissions())
+//                stopLocationUpdates();
     }
 
 
@@ -654,148 +955,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             mFusedLocationClient.requestLocationUpdates(mLocationRequest,
                     mLocationCallback,
                     null /* Looper */);
-            mDatabase = FirebaseDatabase.getInstance().getReference();
-            Log.d(TAG, "mDatabase = " + mDatabase.toString());
-            Log.d(TAG, "busNumber  =  " + busNumber);
-            Log.d(TAG, "mDatabase.child(VEHICLE) = " + mDatabase.child(VEHICLE).toString());
-            if (busNumber == null)    {
-                    Log.e(TAG, "busNumber is null");
-                    return;
-            }
 
-            try {
-                    Log.d(TAG, "mDatabase.child(VEHICLE).child(busNumber) = " + mDatabase.child(VEHICLE).child(busNumber).toString());
-                    final DatabaseReference mRef = mDatabase.child(VEHICLE).child(busNumber);
-                    Log.d(TAG, "mRef = " + mRef.toString());
-
-                    mRef.addChildEventListener(new ChildEventListener() {
-                            @Override
-                            public void onChildAdded(DataSnapshot dataSnapshot, String s) {
-
-                                    Log.d(TAG, "dataSnapshot onChildAdded : " + dataSnapshot);
-
-//                                        Log.d(TAG, "map = " + map);
-                                    if (!dataSnapshot.getKey().equals("temp")) {
-                                            key = dataSnapshot.getKey();
-                                            Log.d(TAG, "key = " + key);
-
-                                            if (!key.equals("temp")) {
-                                                    DatabaseReference locationRef = mRef.child(key).child("LOCATION");
-                                                    Log.d(TAG, "locationRef =  " + locationRef.toString());
-                                                    locationRef.addValueEventListener(new ValueEventListener() {
-                                                            @Override
-                                                            public void onDataChange(DataSnapshot dataSnapshot) {
-                                                                    GenericTypeIndicator<Map<String, String>> genericTypeIndicator = new GenericTypeIndicator<Map<String, String>>() {
-                                                                    };
-                                                                    Map<String, String> map = dataSnapshot.getValue(genericTypeIndicator);
-                                                                /*GenericTypeIndicator<Map<String, Map<String, String>>> genericTypeIndicator = new GenericTypeIndicator<Map<String, Map<String, String>>>() {
-                                                                };
-                                                                Map<String, Map<String, String>> map = dataSnapshot.getValue(genericTypeIndicator);*/
-
-                                                                    if (map != null) {
-                                                                            Log.d(TAG, "onDataChange-map in onValueEventListener =  " + map);
-                                                                            String latitudeStr = map.get(LATITUDE);
-                                                                            String longitudeStr = map.get(LONGITUDE);
-
-                                                                            Log.d(TAG, "onDataChange-Latitude = " + latitudeStr);
-                                                                            Log.d(TAG, "onDataChange-Longitude = " + longitudeStr);
-
-                                                                            double latitude = Double.parseDouble(latitudeStr);
-                                                                            double longitude = Double.parseDouble(longitudeStr);
-                                                                            LatLng latLng = new LatLng(latitude, longitude);
-
-                                                                            String str = "Location";
-                                                                            if (null != mCurrentLocation) {
-
-                                                                                    Geocoder geocoder = new Geocoder(getApplicationContext());
-
-                                                                                    try {
-                                                                                            List<Address> addressList = geocoder.getFromLocation(latitude, longitude, 1);
-                                                                                            if (addressList.get(0).getSubLocality() != null) {
-                                                                                                    str = "";
-                                                                                                    str += addressList.get(0).getSubLocality() + ",";
-                                                                                            }
-                                                                                            str += addressList.get(0).getLocality();
-//                                                                                            str += addressList.get(0).getCountryName();
-                                                                                            Log.d(TAG, "onDataChange-GEOCODER STARTED.");
-                                                                                    } catch (IOException e) {
-                                                                                            e.printStackTrace();
-                                                                                            Log.e(TAG, "onDataChange-GEOCODER DIDN'T WORK.");
-                                                                                    }
-                                                                                    i = (int) dataSnapshot.getChildrenCount() - 1;
-                                                                                    markerName = mMap.addMarker(new MarkerOptions()
-                                                                                            .position(new LatLng(latitude, longitude))
-                                                                                            .title(str));
-                                                                                    markerName.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.start_blue));
-                                                                                    markers.put(i, markerName);
-                                                                                    mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(latitude, longitude), 12.0f));
-                                                                                    markerset.add(markerName);
-                                                                                    Log.d(TAG, "onDataChange-markerName = " + markerName.toString());
-                                                                                    dict.put(key, i);
-                                                                                    //Log.d(TAG, "dict = " + dict);
-//                                                                                    Log.d(TAG, "onDataChange-key = " + key);
-//                                                                                    Log.d(TAG, "onDataChange-i = " + i);
-//                                                                                    Log.d(TAG, "onDataChange-dict = " + dict.toString());
-//                                                                                    Log.d(TAG, "onDataChange-dict.get(key)  = " + dict.get(key));
-                                                                            }
-                                                                    }
-
-
-                                                            }
-
-                                                            @Override
-                                                            public void onCancelled(DatabaseError databaseError) {
-
-                                                            }
-
-                                                    });
-
-
-                                                    Log.d(TAG, "Data : " + dataSnapshot.getValue());
-                                            }
-                                    }
-                            }
-
-                            @Override
-                            public void onChildChanged(DataSnapshot dataSnapshot, String s) {
-
-                            }
-
-                            @Override
-                            public void onChildRemoved(DataSnapshot dataSnapshot) {
-//                    int userToDelete = dict.get(dataSnapshot.getKey());
-//                    Log.d(TAG, "onChildRemoved-userToDelete = " + userToDelete);
-//                    Marker markerName = markers.get(userToDelete);
-//                    Log.d(TAG, "onChildRemoved-markerName BEFORE DELETION = " + markerName);
-//                    Log.d(TAG, "onChildRemoved-markerName.toString() BEFORE DELETION = " + markerName.toString());
-//
-//                    if (markerName != null) {
-//                        markerName.remove();
-//                        assert  markerName == null;
-//                        //Log.d(TAG, "onChildRemoved-markerName AFTER DELETION = " + markerName);
-//                        //Log.d(TAG, "onChildRemoved-markerName.toString() AFTER DELETION = " + markerName.toString());
-//                        i = (int) dataSnapshot.getChildrenCount() - 1;
-//                    }
-                                    assert mMap != null;
-                                    mMap.clear();
-                                    onMapReady(mMap);
-                                    startLocationUpdates();
-
-                            }
-
-                            @Override
-                            public void onChildMoved(DataSnapshot dataSnapshot, String s) {
-
-                            }
-
-                            @Override
-                            public void onCancelled(DatabaseError databaseError) {
-
-                            }
-                    });
-            } catch (Exception e) {
-                    Log.e(TAG, "ERROR : " + e.toString());
-            }
     }
         @Override
     protected void onSaveInstanceState(Bundle outState) {
@@ -804,23 +964,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         // ...
         super.onSaveInstanceState(outState);
     }
-
-    public void onNormalMap(View view) {
-        mMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
-    }
-
-    public void onSatelliteMap(View view) {
-        mMap.setMapType(GoogleMap.MAP_TYPE_SATELLITE);
-    }
-
-    public void onTerrainMap(View view) {
-        mMap.setMapType(GoogleMap.MAP_TYPE_TERRAIN);
-    }
-
-    public void onHybridMap(View view) {
-        mMap.setMapType(GoogleMap.MAP_TYPE_HYBRID);
-    }
-
 
     public void signingOut () {
 
@@ -858,6 +1001,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         progressDialog.dismiss();
                         progressDialog = null;
                 }
+                if(mRef != null)
+                        mRef.removeEventListener(mRefListener);
         }
 
 }

@@ -6,6 +6,9 @@
             android:id="@+id/Home"
             android:icon="@drawable/ic_home_black_24dp"
             android:title="@string/home" />    </group>
+    <item android:title="Remove all markers"
+          android:id="@+id/remove_markers"
+          android:icon="@drawable/ic_delete_black_24dp"/>
 
     <item android:title="@string/others">
         <menu>
