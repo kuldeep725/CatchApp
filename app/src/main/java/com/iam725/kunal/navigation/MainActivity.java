@@ -1,6 +1,5 @@
 package com.iam725.kunal.navigation;
 
-import android.annotation.SuppressLint;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -11,9 +10,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.BitmapFactory;
-import android.location.Geocoder;
 import android.location.Location;
-import android.location.LocationManager;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -30,7 +27,6 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -64,12 +60,6 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 //import android.location.LocationListener;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback, LocationListener,
@@ -85,24 +75,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         private final String LATITUDE = "latitude";
         private final String LONGITUDE = "longitude";
         private final String VEHICLE = "vehicle";
-        String key;
-        private int checkBusSelection = 0;
         private static final int REQUEST_PERMISSIONS_REQUEST_CODE = 34;
-        private Context context;
-        private DrawerLayout drawerLayout;
-        private ActionBarDrawerToggle mDrawerToggle;
-        private CharSequence mDrawerTitle;
-        private CharSequence mTitle;
-        private ListView mDrawerList;
-        boolean isGPSEnabled = false;
-        boolean isNetworkEnabled = false;
-        boolean canGetLocation = false;
         String busNumber;
         ProgressDialog progressDialog;
-
-        Map<String, Integer> dict = new HashMap<>();
-        @SuppressLint("UseSparseArrays")
-        Map<Integer, Marker> markers = new HashMap<>();
 
         protected GoogleMap mMap;
         protected DatabaseReference mDatabase;
@@ -113,29 +88,16 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         private LocationCallback mLocationCallback;
         private Boolean mRequestingLocationUpdates;
         Marker markerName;
-        TextView distance;
-        TextView duration;
-        protected LocationManager locationManager;
         static int i = 0;
-        private ArrayList<Marker> markerset = new ArrayList<>();
-        private final String ROUTE = "route";
-        private LatLng nearestLatlng = null;
-        private double dist = 0;
-        private double dur = 0;
-        private double minDistance = Double.MAX_VALUE;
-        private LatLng minLocation = null;
-        private int noOfChildren = 0;
-        private Marker myLocationMarker;
         private LatLng pos;
         private String userEmail = null;
         private String name = "Location";
         private NotificationCompat.Builder builder;
         private int notificationId=1;
         private String status = "0";            //status = 1 means notification off
+                                                                    //status = 0 means notification on
         private ChildEventListener mRefListener;
         private DatabaseReference mRef;
-        private boolean flagKeyRef = false;
-        //status = 0 means notification on
 
         protected void createLocationRequest() {
                 mLocationRequest = new LocationRequest();
@@ -153,14 +115,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
                 setSupportActionBar(toolbar);
                 progressDialog = new ProgressDialog(this);
-      /*  FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
-            }
-        });*/
 
                 DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
                 ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
@@ -169,7 +123,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 toggle.syncState();
 
                 NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
-                navigationView.setNavigationItemSelectedListener((NavigationView.OnNavigationItemSelectedListener) this);
+                navigationView.setNavigationItemSelectedListener(this);
 
                 // Obtain the SupportMapFragment and get notified when the map is ready to be used.
                 SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
@@ -180,22 +134,15 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 FirebaseApp.initializeApp(this);
                 mDatabase = FirebaseDatabase.getInstance().getReference();
 
-//                NotificationCompat.Builder builder = new NotificationCompat.Builder(MainActivity.this);
-//                builder.setLargeIcon(BitmapFactory.decodeResource(getResources(), R.drawable.gogo));
-//                builder.setContentTitle("Pick up Request");
-//                builder.setSmallIcon(R.drawable.cast_ic_notification_small_icon);
-//                NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-//                notificationManager.notify(1, builder.build());
-
                 if (checkPermissions()) {
                         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
 
                         createLocationRequest();
 
                         //show error dialog if GoolglePlayServices not available
-        /*if (!isGooglePlayServicesAvailable()) {
-            finish();
-        }*/
+                        /*if (!isGooglePlayServicesAvailable()) {
+                            finish();
+                        }*/
 
                         mGoogleApiClient = new GoogleApiClient.Builder(this)
                                 .addApi(LocationServices.API)
@@ -335,36 +282,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         userDatabase.child(LONGITUDE).setValue(lng);
                         Log.d(TAG, "userDatabase@ =  " + userDatabase.toString());
 
-                        String str = "My Location";
-                        Geocoder geocoder = new Geocoder(getApplicationContext());
-
-                        try {
-                                List<android.location.Address> addressList = geocoder.getFromLocation(mCurrentLocation.getLatitude(),
-                                        mCurrentLocation.getLongitude(), 1);
-                                str = "";
-                                if (addressList.get(0).getSubLocality() != null) {
-                                        str = addressList.get(0).getSubLocality()+",";
-                                }
-                                str += addressList.get(0).getLocality();
-                                Log.d(TAG, "GEOCODER STARTED.");
-                        } catch (IOException e) {
-                                e.printStackTrace();
-                                Log.e(TAG, "GEOCODER DIDN'T WORK.");
-                        }
-
-//                        if (myLocationMarker != null) {
-//                                myLocationMarker.remove();
-//                        }
-//                        myLocationMarker = mMap.addMarker(new MarkerOptions()
-//                                .position(new LatLng(mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude()))
-//                                .title(str));
-//                        myLocationMarker.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.end_green));
-//                        Log.e(TAG, "myLocationMarker = " + myLocationMarker);
-
                         mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(
                                 new LatLng(mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude()), 16.0f));
-//                                                mMap.animateCamera(CameraUpdateFactory.newLatLng(
-//                                new LatLng(mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude())));
 
                 } else {
                         Log.d(TAG, "My location is null ...............");
@@ -483,19 +402,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             case R.id.Home :
                 break;
         }
-       /* if (id == R.id.nav_camera) {
-            // Handle the camera action
-        } else if (id == R.id.nav_gallery) {
-
-        } else if (id == R.id.nav_slideshow) {
-
-        } else if (id == R.id.nav_manage) {
-
-        } else if (id == R.id.nav_share) {
-
-        } else if (id == R.id.nav_send) {
-
-        }*/
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         drawer.closeDrawer(GravityCompat.START);
@@ -662,7 +568,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                                                                                 builder.setContentIntent(pi);
                                                                                 NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
                                                                                 notificationManager.notify(notificationId++, builder.build());
-
                                                                                 status = null;
 //                                                                                        Log.d(TAG, "NOW status = "+ status);
                                                                                 DatabaseReference keyRef_d = mRef.child(name);
