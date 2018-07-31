@@ -54,10 +54,10 @@ public class Login extends AppCompatActivity {
 //                }
                 progressDialog = new ProgressDialog(Login.this);
                 mAuth = FirebaseAuth.getInstance();
-                emailEditText = (EditText) findViewById(R.id.input_email);
-                passwordEditText = (EditText) findViewById(R.id.input_password);
-                IoginButton = (ImageButton) findViewById(R.id.btn_login);
-                final Button forgotPassword = (Button) findViewById (R.id.forgot_password);
+                emailEditText = findViewById(R.id.input_email);
+                passwordEditText = findViewById(R.id.input_password);
+                IoginButton = findViewById(R.id.btn_login);
+                final Button forgotPassword = findViewById (R.id.forgot_password);
                 forgotPassword.setPaintFlags(forgotPassword.getPaintFlags() | Paint.UNDERLINE_TEXT_FLAG);
 
                 forgotPassword.setOnClickListener(new View.OnClickListener() {
@@ -104,9 +104,7 @@ public class Login extends AppCompatActivity {
                 IoginButton.setOnClickListener(new View.OnClickListener() {
                         @Override
                         public void onClick(View v) {
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-                                        IoginButton.setBackground(getResources().getDrawable(R.drawable.button_login_shadow_pressed));
-                                }
+                                IoginButton.setBackground(getResources().getDrawable(R.drawable.button_login_shadow_pressed));
                                 signIn ();
                         }
                 });

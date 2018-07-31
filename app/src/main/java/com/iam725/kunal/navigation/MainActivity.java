@@ -69,7 +69,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         private static final String TAG = "VehicleMapsActivity";
         private static final long INTERVAL = 1000 * 10;             //time in milliseconds
         private static final long FASTEST_INTERVAL = 1000 * 5;
-        private static final long INTERMEDIATE_INTERVAL = 1000*8;
+        private static final long INTERMEDIATE_INTERVAL = 1000 * 8;
         private static final String REQUESTING_LOCATION_UPDATES_KEY = "requesting-location-updates";
         private final String USER = "user";
         private final String LATITUDE = "latitude";
@@ -93,9 +93,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         private String userEmail = null;
         private String name = "Location";
         private NotificationCompat.Builder builder;
-        private int notificationId=1;
+        private int notificationId = 1;
         private String status = "0";            //status = 1 means notification off
-                                                                    //status = 0 means notification on
+        //status = 0 means notification on
         private ChildEventListener mRefListener;
         private DatabaseReference mRef;
 
@@ -112,17 +112,17 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 Log.d(TAG, "onCreate ...............................");
                 super.onCreate(savedInstanceState);
                 setContentView(R.layout.activity_main);
-                Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+                Toolbar toolbar = findViewById(R.id.toolbar);
                 setSupportActionBar(toolbar);
                 progressDialog = new ProgressDialog(this);
 
-                DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
+                DrawerLayout drawer = findViewById(R.id.drawer_layout);
                 ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
                         this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
                 drawer.setDrawerListener(toggle);
                 toggle.syncState();
 
-                NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
+                NavigationView navigationView = findViewById(R.id.nav_view);
                 navigationView.setNavigationItemSelectedListener(this);
 
                 // Obtain the SupportMapFragment and get notified when the map is ready to be used.
@@ -203,7 +203,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         @Override
         public void onBackPressed() {
-                DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
+                DrawerLayout drawer = findViewById(R.id.drawer_layout);
                 if (drawer.isDrawerOpen(GravityCompat.START)) {
                         drawer.closeDrawer(GravityCompat.START);
                 } else {
@@ -224,7 +224,17 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 //Turns on 3D buildings
                 mMap.setBuildingsEnabled(true);
                 mMap.getUiSettings().setMapToolbarEnabled(false);
-                if (checkPermissions()){
+                if (checkPermissions()) {
+                        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                                // TODO: Consider calling
+                                //    ActivityCompat#requestPermissions
+                                // here to request the missing permissions, and then overriding
+                                //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                                //                                          int[] grantResults)
+                                // to handle the case where the user grants the permission. See the documentation
+                                // for ActivityCompat#requestPermissions for more details.
+                                return;
+                        }
                         mMap.setMyLocationEnabled(true);
                 }
 
@@ -403,7 +413,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 break;
         }
 
-        DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
+        DrawerLayout drawer = findViewById(R.id.drawer_layout);
         drawer.closeDrawer(GravityCompat.START);
         return true;
     }
@@ -483,9 +493,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     }
             }
             Log.e(TAG, "userId = "+userId);
-            NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
+            NavigationView navigationView = findViewById(R.id.nav_view);
             View headerView = navigationView.getHeaderView(0);
-            TextView tv = (TextView) headerView.findViewById(R.id.user_id);
+            TextView tv = headerView.findViewById(R.id.user_id);
             tv.setText(userId);
 
             NotificationManager notificationManager = (NotificationManager) getApplicationContext().getSystemService(Context.NOTIFICATION_SERVICE);

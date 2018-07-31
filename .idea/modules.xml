@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/Navigation.iml" filepath="$PROJECT_DIR$/Navigation.iml" />
+      <module fileurl="file://$PROJECT_DIR$/CatchApp.iml" filepath="$PROJECT_DIR$/CatchApp.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
     </modules>
   </component>
