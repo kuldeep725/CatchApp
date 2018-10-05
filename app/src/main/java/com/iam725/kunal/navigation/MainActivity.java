@@ -1,5 +1,6 @@
 package com.iam725.kunal.navigation;
 
+import android.annotation.SuppressLint;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -99,6 +100,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         private ChildEventListener mRefListener;
         private DatabaseReference mRef;
 
+        @SuppressLint("RestrictedApi")
         protected void createLocationRequest() {
                 mLocationRequest = new LocationRequest();
                 mLocationRequest.setInterval(INTERMEDIATE_INTERVAL);
@@ -181,7 +183,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 //                                                        Log.d(TAG, "userDatabase@ =  " + userDatabase.toString());
 //                                                        Log.d(TAG, "lat = " + lat + ", lng = " + lng);
                                                 }
-//                                                showMyLocationMarker();
+                                                showMyLocationMarker();
                                         }
                                 }
 
